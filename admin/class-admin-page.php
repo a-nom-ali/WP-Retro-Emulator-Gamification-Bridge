@@ -235,27 +235,160 @@ class WP_Gamify_Bridge_Admin_Page {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'gamify_events';
 
+		// Filters.
+		$filter_event_type = isset( $_GET['filter_event_type'] ) ? sanitize_text_field( $_GET['filter_event_type'] ) : '';
+		$filter_user       = isset( $_GET['filter_user'] ) ? absint( $_GET['filter_user'] ) : 0;
+		$filter_room       = isset( $_GET['filter_room'] ) ? sanitize_text_field( $_GET['filter_room'] ) : '';
+		$filter_date_from  = isset( $_GET['filter_date_from'] ) ? sanitize_text_field( $_GET['filter_date_from'] ) : '';
+		$filter_date_to    = isset( $_GET['filter_date_to'] ) ? sanitize_text_field( $_GET['filter_date_to'] ) : '';
+
+		// Build WHERE clause.
+		$where_clauses = array();
+		$query_params  = array();
+
+		if ( ! empty( $filter_event_type ) ) {
+			$where_clauses[] = 'event_type = %s';
+			$query_params[]  = $filter_event_type;
+		}
+
+		if ( ! empty( $filter_user ) ) {
+			$where_clauses[] = 'user_id = %d';
+			$query_params[]  = $filter_user;
+		}
+
+		if ( ! empty( $filter_room ) ) {
+			$where_clauses[] = 'room_id = %s';
+			$query_params[]  = $filter_room;
+		}
+
+		if ( ! empty( $filter_date_from ) ) {
+			$where_clauses[] = 'DATE(created_at) >= %s';
+			$query_params[]  = $filter_date_from;
+		}
+
+		if ( ! empty( $filter_date_to ) ) {
+			$where_clauses[] = 'DATE(created_at) <= %s';
+			$query_params[]  = $filter_date_to;
+		}
+
+		$where_sql = '';
+		if ( ! empty( $where_clauses ) ) {
+			$where_sql = 'WHERE ' . implode( ' AND ', $where_clauses );
+		}
+
 		// Pagination.
 		$per_page     = 50;
 		$current_page = isset( $_GET['paged'] ) ? max( 1, absint( $_GET['paged'] ) ) : 1;
 		$offset       = ( $current_page - 1 ) * $per_page;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$total_events = $wpdb->get_var( "SELECT COUNT(*) FROM $table_name" );
-		$total_pages  = ceil( $total_events / $per_page );
+		// Get total events count.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$total_events = $wpdb->get_var(
+			! empty( $query_params )
+				? $wpdb->prepare( "SELECT COUNT(*) FROM $table_name $where_sql", $query_params )
+				: "SELECT COUNT(*) FROM $table_name $where_sql"
+		);
+		$total_pages = ceil( $total_events / $per_page );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// Get events.
+		$query_params[] = $per_page;
+		$query_params[] = $offset;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$events = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT * FROM $table_name ORDER BY created_at DESC LIMIT %d OFFSET %d",
-				$per_page,
-				$offset
+				"SELECT * FROM $table_name $where_sql ORDER BY created_at DESC LIMIT %d OFFSET %d",
+				$query_params
 			)
 		);
+
+		// Get distinct event types for filter.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$event_types = $wpdb->get_col( "SELECT DISTINCT event_type FROM $table_name ORDER BY event_type" );
+
+		// Get rooms for filter.
+		$rooms_table = $wpdb->prefix . 'gamify_rooms';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rooms = $wpdb->get_results( "SELECT room_id, name FROM $rooms_table ORDER BY name" );
 
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Event Logs', 'wp-gamify-bridge' ); ?></h1>
+
+			<!-- Filters -->
+			<div class="card" style="margin: 20px 0;">
+				<h2><?php esc_html_e( 'Filter Events', 'wp-gamify-bridge' ); ?></h2>
+				<form method="get" action="">
+					<input type="hidden" name="page" value="gamify-bridge-events">
+
+					<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+						<!-- Event Type Filter -->
+						<div>
+							<label for="filter_event_type"><?php esc_html_e( 'Event Type', 'wp-gamify-bridge' ); ?></label>
+							<select name="filter_event_type" id="filter_event_type" style="width: 100%;">
+								<option value=""><?php esc_html_e( 'All Types', 'wp-gamify-bridge' ); ?></option>
+								<?php foreach ( $event_types as $type ) : ?>
+									<option value="<?php echo esc_attr( $type ); ?>" <?php selected( $filter_event_type, $type ); ?>>
+										<?php echo esc_html( ucwords( str_replace( '_', ' ', $type ) ) ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+						</div>
+
+						<!-- User Filter -->
+						<div>
+							<label for="filter_user"><?php esc_html_e( 'User', 'wp-gamify-bridge' ); ?></label>
+							<?php
+							wp_dropdown_users(
+								array(
+									'name'             => 'filter_user',
+									'id'               => 'filter_user',
+									'show_option_all'  => __( 'All Users', 'wp-gamify-bridge' ),
+									'selected'         => $filter_user,
+									'class'            => 'widefat',
+								)
+							);
+							?>
+						</div>
+
+						<!-- Room Filter -->
+						<div>
+							<label for="filter_room"><?php esc_html_e( 'Room', 'wp-gamify-bridge' ); ?></label>
+							<select name="filter_room" id="filter_room" style="width: 100%;">
+								<option value=""><?php esc_html_e( 'All Rooms', 'wp-gamify-bridge' ); ?></option>
+								<?php foreach ( $rooms as $room ) : ?>
+									<option value="<?php echo esc_attr( $room->room_id ); ?>" <?php selected( $filter_room, $room->room_id ); ?>>
+										<?php echo esc_html( $room->name ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+						</div>
+
+						<!-- Date From -->
+						<div>
+							<label for="filter_date_from"><?php esc_html_e( 'Date From', 'wp-gamify-bridge' ); ?></label>
+							<input type="date" name="filter_date_from" id="filter_date_from" value="<?php echo esc_attr( $filter_date_from ); ?>" style="width: 100%;">
+						</div>
+
+						<!-- Date To -->
+						<div>
+							<label for="filter_date_to"><?php esc_html_e( 'Date To', 'wp-gamify-bridge' ); ?></label>
+							<input type="date" name="filter_date_to" id="filter_date_to" value="<?php echo esc_attr( $filter_date_to ); ?>" style="width: 100%;">
+						</div>
+					</div>
+
+					<p class="submit">
+						<button type="submit" class="button button-primary"><?php esc_html_e( 'Apply Filters', 'wp-gamify-bridge' ); ?></button>
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=gamify-bridge-events' ) ); ?>" class="button"><?php esc_html_e( 'Reset', 'wp-gamify-bridge' ); ?></a>
+						<span style="margin-left: 15px; color: #666;">
+							<?php
+							/* translators: %d: number of events */
+							printf( esc_html__( 'Showing %s events', 'wp-gamify-bridge' ), '<strong>' . number_format_i18n( $total_events ) . '</strong>' );
+							?>
+						</span>
+					</p>
+				</form>
+			</div>
 
 			<table class="wp-list-table widefat fixed striped">
 				<thead>

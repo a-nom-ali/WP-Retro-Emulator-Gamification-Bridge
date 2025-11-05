@@ -75,6 +75,7 @@ class WP_Gamify_Bridge {
 		// Admin classes.
 		if ( is_admin() ) {
 			require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'admin/class-admin-page.php';
+			require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'admin/class-dashboard.php';
 		}
 
 		// Integration classes.
@@ -112,6 +113,7 @@ class WP_Gamify_Bridge {
 		// Initialize admin page.
 		if ( is_admin() ) {
 			WP_Gamify_Bridge_Admin_Page::instance();
+			WP_Gamify_Bridge_Dashboard::instance();
 		}
 
 		// Initialize integrations.

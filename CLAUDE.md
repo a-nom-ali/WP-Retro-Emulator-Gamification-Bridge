@@ -162,23 +162,76 @@ composer run test
   - **Permissions**: Room owner or admin for modify/delete operations
   - **Validation**: Name (1-255 chars), max_players (2-100)
 
-- **WP_Gamify_Bridge_Admin_Page** (`admin/class-admin-page.php`) 🆕 Created in Phase 4
-  - **Lines**: 411
-  - **Purpose**: WordPress admin interface for room management
+- **WP_Gamify_Bridge_Admin_Page** (`admin/class-admin-page.php`) 🆕 Created in Phase 4, Enhanced in Phase 6
+  - **Lines**: 514 (enhanced from 411 lines)
+  - **Purpose**: WordPress admin interface for room management and event logs
   - **Features**:
     - Admin menu: "Gamify Bridge" with dashicons-games icon
-    - Two submenu pages: Rooms, Event Logs
+    - Submenu pages: Rooms, Event Logs (with filtering)
     - Room creation form with validation
     - Room listing table with player counts and status
     - Toggle room active/inactive status
     - Delete rooms with confirmation
     - Copy shortcode to clipboard button
-    - Event logs viewer with pagination (50 per page)
+    - Event logs viewer with advanced filtering (50 per page)
+  - **Event Log Filtering** 🆕 (Phase 6):
+    - Filter by event type (dropdown of all types)
+    - Filter by user (wp_dropdown_users)
+    - Filter by room (dropdown of all rooms)
+    - Date range filtering (from/to dates)
+    - Dynamic WHERE clause building
+    - Shows filtered event count
+    - Reset filters button
   - **Admin Actions**:
     - `admin_post_gamify_create_room` - Handle room creation
     - `admin_post_gamify_delete_room` - Handle room deletion
     - `admin_post_gamify_toggle_room` - Toggle room status
   - **Security**: Nonce verification and capability checks on all actions
+
+- **WP_Gamify_Bridge_Dashboard** (`admin/class-dashboard.php`) 🆕 Created in Phase 6
+  - **Lines**: 1095
+  - **Purpose**: Comprehensive admin dashboard with statistics, settings, leaderboard, and testing tools
+  - **Dashboard Page**:
+    - 4 stat cards: Total Events, Active Rooms, Active Players, Events Today
+    - Event timeline chart (last 7 days) using Chart.js
+    - Event types breakdown (doughnut chart)
+    - Recent events table (10 most recent)
+    - Top rooms by activity (10 most active)
+  - **Settings Page**:
+    - Enable debug mode toggle
+    - Polling frequency (1-60 seconds, default: 3)
+    - Presence update frequency (10-300 seconds, default: 30)
+    - Player timeout (5-120 minutes, default: 30)
+    - Max notifications (5-100, default: 20)
+    - System information display (WordPress, PHP, GamiPress, MyCred)
+  - **Leaderboard Page**:
+    - 3 leaderboard types: Events, GamiPress XP, MyCred Points
+    - Top 50 users with rank badges (🥇🥈🥉)
+    - Displays user email and last active time
+    - Tab-based navigation between leaderboard types
+  - **Event Tester Page**:
+    - Form to trigger test events manually
+    - Select event type, user, score, level, difficulty
+    - Useful for testing integrations without emulator
+    - Shows recent test events (20 most recent)
+  - **Admin Actions**:
+    - `admin_post_gamify_test_event` - Handle test event submission
+  - **Key Methods**:
+    - `get_statistics()` - Get dashboard stats and chart data
+    - `get_leaderboard($type, $limit)` - Get leaderboard by type
+    - `render_dashboard_page()` - Statistics dashboard
+    - `render_leaderboard_page()` - User rankings
+    - `render_settings_page()` - Plugin settings
+    - `render_tester_page()` - Event testing tool
+    - `render_recent_events($limit)` - Recent events table
+    - `render_top_rooms($limit)` - Top active rooms
+  - **Assets**:
+    - Chart.js 4.4.1 (CDN) for visualizations
+    - Custom grid layouts for responsive stats cards
+  - **Settings**:
+    - Registered as `wp_gamify_bridge_options`
+    - Settings section: `wp_gamify_bridge_general`
+    - All settings use WordPress Settings API
 
 - **WP_Gamify_Bridge_Script_Enqueuer** (`inc/class-script-enqueuer.php`)
   - Handles JavaScript/CSS asset loading
@@ -790,7 +843,7 @@ function onPlayerAchievement(achievementName) {
 
 ## Project Status
 
-**Current Phase:** Phase 6 (Admin Dashboard) - see ROADMAP.md for detailed phases.
+**Current Phase:** Phase 7 (Extended Emulator Support) - see ROADMAP.md for detailed phases.
 
 **Completed Phases:**
 - ✅ Phase 0: Foundation & Setup - Plugin skeleton complete
@@ -799,5 +852,6 @@ function onPlayerAchievement(achievementName) {
 - ✅ Phase 3: Gamification System Integration - GamiPress & MyCred with intelligent multipliers
 - ✅ Phase 4: Room System - Complete room management with CRUD, player tracking, admin UI
 - ✅ Phase 5: Real-time Broadcasting - Polling-based real-time updates with WebSocket upgrade path
+- ✅ Phase 6: Admin Dashboard - Statistics dashboard, settings, leaderboard, event tester, advanced filtering
 
-Plugin is in active development (v0.1.0). Real-time features use polling with WebSocket upgrade path prepared.
+Plugin is in active development (v0.1.0). Full admin dashboard with statistics, filtering, and testing tools.
