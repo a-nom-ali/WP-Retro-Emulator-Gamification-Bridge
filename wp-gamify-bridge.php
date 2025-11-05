@@ -64,6 +64,7 @@ class WP_Gamify_Bridge {
 	 */
 	private function includes() {
 		// Core classes.
+		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-post-types.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-database.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-event-validator.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-rate-limiter.php';
@@ -91,13 +92,16 @@ class WP_Gamify_Bridge {
 		register_activation_hook( WP_GAMIFY_BRIDGE_PLUGIN_FILE, array( $this, 'activate' ) );
 		register_deactivation_hook( WP_GAMIFY_BRIDGE_PLUGIN_FILE, array( $this, 'deactivate' ) );
 
-		add_action( 'plugins_loaded', array( $this, 'init' ) );
+		add_action( 'init', array( $this, 'init' ) );
 	}
 
 	/**
 	 * Initialize plugin components.
 	 */
 	public function init() {
+		// Register custom post types.
+		WP_Gamify_Bridge_Post_Types::instance();
+
 		// Initialize database.
 		WP_Gamify_Bridge_Database::instance();
 
@@ -137,6 +141,9 @@ class WP_Gamify_Bridge {
 	 * Plugin activation hook.
 	 */
 	public function activate() {
+		// Ensure database class is loaded.
+		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-database.php';
+
 		// Create database tables.
 		WP_Gamify_Bridge_Database::create_tables();
 

@@ -72,7 +72,7 @@ class WP_Gamify_Bridge_Emulator_Manager {
 	 */
 	private function register_adapters() {
 		$this->register_adapter( new WP_Gamify_Bridge_JSNES_Adapter() );
-		$this->register_adapter( new WP_Gamify_Bridge_jSNES_Adapter() );
+		$this->register_adapter( new WP_Gamify_Bridge_JSNES_SNES_Adapter() );
 		$this->register_adapter( new WP_Gamify_Bridge_GBA_Adapter() );
 		$this->register_adapter( new WP_Gamify_Bridge_MAME_Adapter() );
 		$this->register_adapter( new WP_Gamify_Bridge_RetroArch_Adapter() );

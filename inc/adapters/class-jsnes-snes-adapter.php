@@ -11,11 +11,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Class WP_Gamify_Bridge_jSNES_Adapter
+ * Class WP_Gamify_Bridge_JSNES_SNES_Adapter
  *
  * Adapter for jSNES (Super Nintendo Entertainment System) emulator.
  */
-class WP_Gamify_Bridge_jSNES_Adapter extends WP_Gamify_Bridge_Emulator_Adapter {
+class WP_Gamify_Bridge_JSNES_SNES_Adapter extends WP_Gamify_Bridge_Emulator_Adapter {
 
 	/**
 	 * Constructor.

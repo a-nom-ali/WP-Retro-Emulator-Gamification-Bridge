@@ -116,20 +116,18 @@ class WP_Gamify_Bridge_GamiPress {
 
 		// Register "Arcade Tokens" point type.
 		gamipress_register_points_type(
-			'arcade_tokens',
-			array(
-				'singular' => __( 'Arcade Token', 'wp-gamify-bridge' ),
-				'plural'   => __( 'Arcade Tokens', 'wp-gamify-bridge' ),
-			)
+			0,
+			__( 'Arcade Token', 'wp-gamify-bridge' ),
+			__( 'Arcade Tokens', 'wp-gamify-bridge' ),
+			'arcade_tokens'
 		);
 
 		// Register "Game Coins" point type.
 		gamipress_register_points_type(
-			'game_coins',
-			array(
-				'singular' => __( 'Game Coin', 'wp-gamify-bridge' ),
-				'plural'   => __( 'Game Coins', 'wp-gamify-bridge' ),
-			)
+			0,
+			__( 'Game Coin', 'wp-gamify-bridge' ),
+			__( 'Game Coins', 'wp-gamify-bridge' ),
+			'game_coins'
 		);
 	}
 
