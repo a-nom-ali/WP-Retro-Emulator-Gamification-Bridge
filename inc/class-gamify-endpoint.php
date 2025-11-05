@@ -231,6 +231,41 @@ class WP_Gamify_Bridge_Endpoint {
 			}
 		}
 
+		// Validate room if provided.
+		if ( ! empty( $room_id ) ) {
+			$room_manager = WP_Gamify_Bridge_Room_Manager::instance();
+			$room         = $room_manager->get_room( $room_id );
+
+			if ( ! $room ) {
+				return new WP_Error(
+					'invalid_room',
+					__( 'Room not found.', 'wp-gamify-bridge' ),
+					array( 'status' => 404 )
+				);
+			}
+
+			if ( ! $room->is_active ) {
+				return new WP_Error(
+					'room_inactive',
+					__( 'This room is not active.', 'wp-gamify-bridge' ),
+					array( 'status' => 403 )
+				);
+			}
+
+			// Optionally verify user is in room (can be disabled via filter).
+			$require_membership = apply_filters( 'wp_gamify_bridge_require_room_membership', true );
+			if ( $require_membership && ! $room_manager->is_user_in_room( $room_id, $user_id ) ) {
+				return new WP_Error(
+					'not_in_room',
+					__( 'You must join the room before triggering events.', 'wp-gamify-bridge' ),
+					array( 'status' => 403 )
+				);
+			}
+
+			// Update player presence in room.
+			$room_manager->update_player_presence( $room_id, $user_id );
+		}
+
 		// Validate complete event.
 		$validation_result = $this->validator->validate_event(
 			array(

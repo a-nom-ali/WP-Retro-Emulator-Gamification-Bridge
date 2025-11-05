@@ -117,23 +117,23 @@ Create a robust, modular WordPress plugin that bridges retro game emulators with
 
 ---
 
-### **Phase 4: Room System** 🏠
+### **Phase 4: Room System** ✅ (Completed)
 **Goal:** Implement multi-user room functionality
 
 **Tasks:**
-1. Create room management system
-2. Build `class-room-manager.php`
-3. Implement room creation/join/leave logic
-4. Add room state persistence
-5. Create shortcode `[retro_room id="X"]`
-6. Build room admin UI
-7. Implement room-scoped events
-8. Add player presence tracking
+1. [x] Create room management system
+2. [x] Build `class-room-manager.php`
+3. [x] Implement room creation/join/leave logic
+4. [x] Add room state persistence
+5. [x] Create shortcode `[retro_room id="X"]`
+6. [x] Build room admin UI
+7. [x] Implement room-scoped events
+8. [x] Add player presence tracking
 
 **Key Files:**
-- `inc/class-room-manager.php`
-- `inc/class-shortcodes.php`
-- `admin/room-settings.php`
+- ✅ `inc/class-room-manager.php` - Enhanced with full CRUD operations
+- ✅ `inc/class-room-endpoint.php` - Complete REST API for room operations
+- ✅ `admin/class-admin-page.php` - Admin UI for room management
 
 **Acceptance Criteria:**
 - ✅ Users can create/join rooms
@@ -296,15 +296,16 @@ Create a robust, modular WordPress plugin that bridges retro game emulators with
 
 ## 🔄 Current Status
 
-**Active Phase:** Phase 4 - Room System
+**Active Phase:** Phase 5 - Real-time Broadcasting
 **Completed Phases:**
 - Phase 0 - Foundation & Setup ✅
 - Phase 1 - Core REST API ✅
 - Phase 2 - Emulator Integration ✅
 - Phase 3 - Gamification System Integration ✅
-**Next Milestone:** Implement multi-user room functionality
+- Phase 4 - Room System ✅
+**Next Milestone:** Implement real-time broadcasting for multi-user rooms
 **Blocked By:** None
-**Est. Completion:** Phase 4 by [TBD]
+**Est. Completion:** Phase 5 by [TBD]
 
 ---
 
@@ -342,6 +343,49 @@ See `CONTRIBUTING.md` for development guidelines.
 **Maintained By:** Nielo Wait
 
 ## 📝 Change Log
+
+### 2025-01-05 (Phase 4)
+- ✅ Completed Phase 4: Room System
+- Enhanced `inc/class-room-manager.php` (625 lines)
+  - Full CRUD operations: create, read, update, delete rooms
+  - Player management: join, leave, presence tracking
+  - Room listing with filtering and pagination
+  - Automatic cleanup of inactive players (30min timeout, hourly cron)
+  - Room statistics and player counts
+  - Caching layer for improved performance
+- Created `inc/class-room-endpoint.php` (535 lines)
+  - REST API endpoints for room operations
+  - GET /room - List all rooms
+  - POST /room - Create new room
+  - GET /room/{id} - Get room details
+  - PUT /room/{id} - Update room settings
+  - DELETE /room/{id} - Delete room
+  - POST /room/{id}/join - Join room
+  - POST /room/{id}/leave - Leave room
+  - POST /room/{id}/presence - Update player presence
+  - GET /room/{id}/players - Get room players
+  - GET /room/{id}/stats - Get room statistics
+- Created `admin/class-admin-page.php` (411 lines)
+  - Admin UI for room management with dashicons
+  - Create/delete/toggle room status
+  - Room listing with player counts and status
+  - Event logs viewer with pagination
+  - Copy shortcode to clipboard functionality
+- Enhanced event endpoint with room validation
+  - Validates room exists and is active
+  - Verifies user membership in room (optional via filter)
+  - Automatic presence updates when events triggered
+  - Room-scoped event broadcasting
+- Enhanced room shortcode rendering
+  - Auto-join on page load for logged-in users
+  - Real-time player list display
+  - Room status indicators
+  - Activity notification area
+- Room state persistence via `room_data` JSON field
+- Player tracking with joined_at and last_seen timestamps
+- Scheduled cleanup via wp-cron
+- 9 new action hooks for room events
+- 1 new filter for presence timeout customization
 
 ### 2025-01-05 (Phase 3)
 - ✅ Completed Phase 3: Gamification System Integration

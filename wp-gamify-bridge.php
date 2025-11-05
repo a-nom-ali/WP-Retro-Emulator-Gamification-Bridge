@@ -69,7 +69,13 @@ class WP_Gamify_Bridge {
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-rate-limiter.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-gamify-endpoint.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-room-manager.php';
+		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-room-endpoint.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-script-enqueuer.php';
+
+		// Admin classes.
+		if ( is_admin() ) {
+			require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'admin/class-admin-page.php';
+		}
 
 		// Integration classes.
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/integrations/gamipress.php';
@@ -95,12 +101,18 @@ class WP_Gamify_Bridge {
 
 		// Initialize REST API.
 		WP_Gamify_Bridge_Endpoint::instance();
+		WP_Gamify_Bridge_Room_Endpoint::instance();
 
 		// Initialize room manager.
 		WP_Gamify_Bridge_Room_Manager::instance();
 
 		// Initialize script enqueuer.
 		WP_Gamify_Bridge_Script_Enqueuer::instance();
+
+		// Initialize admin page.
+		if ( is_admin() ) {
+			WP_Gamify_Bridge_Admin_Page::instance();
+		}
 
 		// Initialize integrations.
 		if ( class_exists( 'GamiPress' ) ) {

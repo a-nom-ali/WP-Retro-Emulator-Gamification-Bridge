@@ -107,10 +107,78 @@ composer run test
     - `wp_gamify_bridge_broadcast_event`
     - `wp_gamify_bridge_event_processed`
 
-- **WP_Gamify_Bridge_Room_Manager** (`inc/class-room-manager.php`)
-  - Manages room creation and retrieval
-  - Provides `[retro_room id="X"]` shortcode
-  - Enqueues room scripts with localized data (apiUrl, nonce, userId, userName)
+- **WP_Gamify_Bridge_Room_Manager** (`inc/class-room-manager.php`) 🆕 Enhanced in Phase 4
+  - **Lines**: 625 (fully enhanced from 175-line skeleton)
+  - **Purpose**: Complete room management system with CRUD operations and player tracking
+  - **Core Methods**:
+    - `create_room($name, $max_players)` - Create new room, returns room_id
+    - `get_room($room_id, $use_cache)` - Get room with caching support
+    - `list_rooms($args)` - List rooms with filtering (is_active, created_by, pagination)
+    - `update_room($room_id, $data)` - Update room name, max_players, is_active, room_data
+    - `delete_room($room_id)` - Permanently delete room
+  - **Player Management**:
+    - `join_room($room_id, $user_id)` - Join room (checks capacity, validates room)
+    - `leave_room($room_id, $user_id)` - Leave room
+    - `get_room_players($room_id)` - Get all players in room
+    - `is_user_in_room($room_id, $user_id)` - Check membership
+    - `update_player_presence($room_id, $user_id)` - Update last_seen timestamp
+  - **Cleanup & Stats**:
+    - `cleanup_inactive_players()` - Removes players inactive for 30+ minutes (hourly cron)
+    - `get_room_stats($room_id)` - Get room statistics (player count, event count, etc.)
+  - **Shortcode**: `[retro_room id="room-abc123"]`
+    - Auto-joins logged-in users
+    - Displays player list with online status
+    - Shows room status and capacity
+    - Includes notification area for activity
+  - **Room State**: Stored in `room_data` JSON field
+    - `players` array with user_id, user_name, joined_at, last_seen
+    - Custom data can be added via filters
+  - **Caching**: Internal room_cache for performance
+  - **Scheduled Tasks**: Hourly cleanup via `wp_gamify_bridge_cleanup_rooms` action
+  - **Action Hooks**:
+    - `wp_gamify_bridge_room_updated` - After room updated
+    - `wp_gamify_bridge_room_deleted` - After room deleted
+    - `wp_gamify_bridge_player_joined_room` - When player joins
+    - `wp_gamify_bridge_player_left_room` - When player leaves
+    - `wp_gamify_bridge_player_timeout` - When inactive player removed
+  - **Filters**:
+    - `wp_gamify_bridge_player_timeout` - Customize timeout duration (default: 1800s / 30min)
+    - `wp_gamify_bridge_presence_interval` - Client-side presence update interval (default: 30000ms)
+
+- **WP_Gamify_Bridge_Room_Endpoint** (`inc/class-room-endpoint.php`) 🆕 Created in Phase 4
+  - **Lines**: 535
+  - **Purpose**: Complete REST API for room operations
+  - **Endpoints**:
+    - `GET /wp-json/gamify/v1/room` - List rooms (requires auth)
+    - `POST /wp-json/gamify/v1/room` - Create room (requires auth)
+    - `GET /wp-json/gamify/v1/room/{id}` - Get room details (requires auth)
+    - `PUT /wp-json/gamify/v1/room/{id}` - Update room (requires room owner or admin)
+    - `DELETE /wp-json/gamify/v1/room/{id}` - Delete room (requires room owner or admin)
+    - `POST /wp-json/gamify/v1/room/{id}/join` - Join room (requires auth)
+    - `POST /wp-json/gamify/v1/room/{id}/leave` - Leave room (requires auth)
+    - `POST /wp-json/gamify/v1/room/{id}/presence` - Update presence (requires auth)
+    - `GET /wp-json/gamify/v1/room/{id}/players` - Get players (requires auth)
+    - `GET /wp-json/gamify/v1/room/{id}/stats` - Get statistics (requires auth)
+  - **Permissions**: Room owner or admin for modify/delete operations
+  - **Validation**: Name (1-255 chars), max_players (2-100)
+
+- **WP_Gamify_Bridge_Admin_Page** (`admin/class-admin-page.php`) 🆕 Created in Phase 4
+  - **Lines**: 411
+  - **Purpose**: WordPress admin interface for room management
+  - **Features**:
+    - Admin menu: "Gamify Bridge" with dashicons-games icon
+    - Two submenu pages: Rooms, Event Logs
+    - Room creation form with validation
+    - Room listing table with player counts and status
+    - Toggle room active/inactive status
+    - Delete rooms with confirmation
+    - Copy shortcode to clipboard button
+    - Event logs viewer with pagination (50 per page)
+  - **Admin Actions**:
+    - `admin_post_gamify_create_room` - Handle room creation
+    - `admin_post_gamify_delete_room` - Handle room deletion
+    - `admin_post_gamify_toggle_room` - Toggle room status
+  - **Security**: Nonce verification and capability checks on all actions
 
 - **WP_Gamify_Bridge_Script_Enqueuer** (`inc/class-script-enqueuer.php`)
   - Handles JavaScript/CSS asset loading
@@ -417,6 +485,20 @@ add_filter( 'wp_gamify_bridge_allowed_events', function( $events ) {
 - `wp_gamify_bridge_mycred_activity_logged` - After activity logged
   - Args: `$user_id`, `$event_type`, `$score`, `$data`
 
+**Room System Actions** 🆕 (Phase 4):
+- `wp_gamify_bridge_room_updated` - After room updated
+  - Args: `$room_id`, `$update_data` (array of changed fields)
+- `wp_gamify_bridge_room_deleted` - After room deleted
+  - Args: `$room_id`
+- `wp_gamify_bridge_player_joined_room` - When player joins room
+  - Args: `$room_id`, `$user_id`
+- `wp_gamify_bridge_player_left_room` - When player leaves room
+  - Args: `$room_id`, `$user_id`
+- `wp_gamify_bridge_player_timeout` - When inactive player removed
+  - Args: `$room_id`, `$user_id`
+- `wp_gamify_bridge_cleanup_rooms` - Scheduled hourly cleanup
+  - No args - hook for custom cleanup tasks
+
 ### Filters
 
 **Core Filters**:
@@ -451,6 +533,17 @@ add_filter( 'wp_gamify_bridge_allowed_events', function( $events ) {
 - `wp_gamify_bridge_mycred_badges` - Modify badges to award
   - Args: `$badges` (array), `$event_type`, `$score`, `$data`, `$user_id`
   - Return: Modified array of badge slugs
+
+**Room System Filters** 🆕 (Phase 4):
+- `wp_gamify_bridge_player_timeout` - Customize player timeout duration
+  - Args: `$timeout` (int, default: 1800 seconds / 30 minutes)
+  - Return: Timeout in seconds
+- `wp_gamify_bridge_presence_interval` - Customize client-side presence update interval
+  - Args: `$interval` (int, default: 30000 milliseconds / 30 seconds)
+  - Return: Interval in milliseconds
+- `wp_gamify_bridge_require_room_membership` - Require users to join room before triggering events
+  - Args: `$require` (bool, default: true)
+  - Return: Boolean
 
 ### Security Considerations
 - All validation uses WP_Error for consistent error handling
@@ -544,12 +637,13 @@ function onGameInitialized(gameName) {
 
 ## Project Status
 
-**Current Phase:** Phase 4 (Room System) - see ROADMAP.md for detailed phases.
+**Current Phase:** Phase 5 (Real-time Broadcasting) - see ROADMAP.md for detailed phases.
 
 **Completed Phases:**
 - ✅ Phase 0: Foundation & Setup - Plugin skeleton complete
 - ✅ Phase 1: Core REST API - Security, validation, rate limiting implemented
 - ✅ Phase 2: Emulator Integration - JavaScript bridge with retry logic and offline support
 - ✅ Phase 3: Gamification System Integration - GamiPress & MyCred with intelligent multipliers
+- ✅ Phase 4: Room System - Complete room management with CRUD, player tracking, admin UI
 
-Plugin is in active development (v0.1.0). WebSocket/real-time features and advanced room management are planned for future phases.
+Plugin is in active development (v0.1.0). WebSocket/real-time features are planned for Phase 5.
