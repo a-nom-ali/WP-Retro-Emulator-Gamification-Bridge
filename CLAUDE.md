@@ -117,12 +117,64 @@ composer run test
 
 ### JavaScript Bridge
 
-- **emulator-hooks.js** (`js/emulator-hooks.js`)
-  - Global: `window.WPGamifyBridge` and `window.triggerWPEvent()`
-  - Detects and hooks into emulators: JSNES, GBA
-  - Convenience methods: `onLevelComplete()`, `onGameOver()`, `onScoreMilestone()`, `onDeath()`, `onGameStart()`, `onAchievementUnlock()`
-  - Handles AJAX requests to REST API with nonce headers
-  - Shows notifications on rewards
+- **emulator-hooks.js** (`js/emulator-hooks.js`) 🆕 Enhanced in Phase 2
+  - **Core Functions:**
+    - `window.WPGamifyBridge` - Main bridge object
+    - `window.triggerWPEvent(eventType, eventData, options)` - Global shorthand
+    - `window.wpGamifyStats()` - Debug statistics viewer
+
+  - **Emulator Detection:** Automatically detects and hooks into:
+    - JSNES (NES emulator)
+    - GBA.js (Game Boy Advance)
+    - RetroArch (multi-system emulator)
+    - EmulatorJS (web-based emulator framework)
+
+  - **Lifecycle Hooks:**
+    - `onGameLoad(gameName, gameData)` - Game initialization
+    - `onLevelComplete(level, score, time)` - Level completion with timing
+    - `onGameOver(score, level, time)` - Game over with final stats
+    - `onScoreMilestone(score, milestone)` - Score achievements
+    - `onDeath(lives, level, cause)` - Player death events
+    - `onGameStart(game, difficulty)` - Game start with difficulty
+    - `onAchievementUnlock(achievement, description)` - Achievement unlocks
+
+  - **Retry Logic:** 🆕
+    - Exponential backoff (1s, 2s, 4s)
+    - Max 3 retry attempts
+    - Automatic retry for network errors (status 0) and server errors (5xx)
+    - No retry for client errors (4xx, except rate limiting)
+
+  - **Event Queue System:** 🆕
+    - Offline mode support - events queued when network unavailable
+    - localStorage persistence - queue survives page refreshes
+    - Automatic processing when connection restored
+    - Queue processing every 5 seconds
+    - Max event age: 1 hour, max attempts: 5
+
+  - **Network Monitoring:** 🆕
+    - Real-time online/offline detection
+    - Automatic queue processing when connection restored
+    - Visual notifications for network status changes
+
+  - **Debug Logging:** 🆕
+    - Color-coded console output (info=blue, success=green, warning=orange, error=red)
+    - Controlled by `config.debug` flag (set via WP_DEBUG)
+    - Detailed event tracking with timestamps
+
+  - **Statistics Tracking:** 🆕
+    - `eventsSent` - Total events triggered
+    - `eventsSuccess` - Successfully delivered events
+    - `eventsFailed` - Failed events
+    - `eventsRetried` - Retry attempts
+    - `queueLength` - Current queue size
+    - `emulatorType` - Detected emulator
+    - `isOnline` - Network status
+
+  - **Rate Limit Handling:** 🆕
+    - Automatic detection of 429 responses
+    - User-friendly error messages
+    - Warning when < 10 requests remaining per minute
+    - Response includes remaining quota in rate_limit object
 
 - **room.js** (`js/room.js`)
   - WebSocket/real-time communication layer (implementation TBD)
@@ -267,7 +319,7 @@ add_filter( 'wp_gamify_bridge_allowed_events', function( $events ) {
 ## Development Workflow
 
 1. **Adding New Event Types**:
-   - Update allowed events array in `inc/class-gamify-endpoint.php:125`
+   - Update allowed events array in `inc/class-event-validator.php::$allowed_events`
    - Add convenience method to `js/emulator-hooks.js` if needed
    - Update integration handlers in `inc/integrations/`
 
@@ -280,8 +332,79 @@ add_filter( 'wp_gamify_bridge_allowed_events', function( $events ) {
    - Always use `$wpdb->prepare()` for SQL injection prevention
    - Use WordPress sanitization functions: `sanitize_text_field()`, `absint()`, `wp_json_encode()`
 
+## JavaScript Usage Examples
+
+### Basic Event Triggering
+```javascript
+// Simple event trigger
+triggerWPEvent('level_complete', { level: 3, score: 1500 });
+
+// Using the bridge object directly
+WPGamifyBridge.onLevelComplete(3, 1500, 120); // level, score, time in seconds
+
+// With options
+triggerWPEvent('game_over', { score: 5000 }, {
+    silent: true,  // Don't show notification
+    timeout: 5000  // Custom timeout
+});
+```
+
+### Checking Statistics (Debug Mode)
+```javascript
+// In browser console when WP_DEBUG is enabled
+wpGamifyStats();
+
+// Returns and displays:
+// {
+//   eventsSent: 15,
+//   eventsSuccess: 14,
+//   eventsFailed: 1,
+//   eventsRetried: 2,
+//   queueLength: 0,
+//   emulatorType: 'JSNES',
+//   isOnline: true
+// }
+```
+
+### Manually Queuing Events
+```javascript
+// Force queue an event (useful for testing offline mode)
+WPGamifyBridge.queueEvent({
+    event: 'score_milestone',
+    score: 10000,
+    data: { milestone: '10k' }
+});
+
+// Check queue length
+console.log(WPGamifyBridge.eventQueue.length);
+```
+
+### Custom Emulator Integration Example
+```javascript
+// In your emulator code:
+function onPlayerDeath(lives, level) {
+    WPGamifyBridge.onDeath(lives, level, 'enemy');
+}
+
+function onLevelCompleted(level, score, timeElapsed) {
+    WPGamifyBridge.onLevelComplete(level, score, timeElapsed);
+}
+
+function onGameInitialized(gameName) {
+    WPGamifyBridge.onGameLoad(gameName, {
+        version: '1.0',
+        region: 'US'
+    });
+}
+```
+
 ## Project Status
 
-Current Phase: Phase 0 (Foundation & Setup) - see ROADMAP.md for detailed phases.
+**Current Phase:** Phase 3 (Gamification System Integration) - see ROADMAP.md for detailed phases.
 
-Plugin is in early development (v0.1.0). Core infrastructure is in place, but WebSocket/real-time features and advanced gamification logic are not yet implemented.
+**Completed Phases:**
+- ✅ Phase 0: Foundation & Setup - Plugin skeleton complete
+- ✅ Phase 1: Core REST API - Security, validation, rate limiting implemented
+- ✅ Phase 2: Emulator Integration - JavaScript bridge with retry logic and offline support
+
+Plugin is in active development (v0.1.0). WebSocket/real-time features and advanced room management are planned for future phases.
