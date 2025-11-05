@@ -179,13 +179,108 @@ composer run test
 - **room.js** (`js/room.js`)
   - WebSocket/real-time communication layer (implementation TBD)
 
-### Gamification Integrations
+### Gamification Integrations 🆕 Enhanced in Phase 3
 
 Located in `inc/integrations/`:
-- **gamipress.php**: Hooks into GamiPress events via `do_action('wp_gamify_bridge_gamipress_event', ...)`
-- **mycred.php**: Hooks into MyCred points system via `do_action('wp_gamify_bridge_mycred_event', ...)`
 
-Both are conditionally loaded only if their parent plugins are active.
+- **WP_Gamify_Bridge_GamiPress** (`inc/integrations/gamipress.php`)
+  - **Lines**: 424 (enhanced from 105-line skeleton)
+  - **Purpose**: Complete GamiPress integration with intelligent XP awards
+  - **XP Multiplier System**:
+    - Score bonus: 1 XP per 100 game points
+    - Level multiplier: 10% bonus per level (e.g., level 5 = 50% bonus)
+    - Difficulty multipliers: easy (1.0x), normal (1.5x), hard (2.0x), expert (3.0x)
+    - Speed bonus: 50% extra XP for completing levels in <60 seconds
+  - **Custom Point Types**:
+    - `arcade_tokens` - "Arcade Token" / "Arcade Tokens"
+    - `game_coins` - "Game Coin" / "Game Coins"
+  - **Custom Triggers**: Registered with GamiPress
+    - `wp_gamify_game_start` - Start a game
+    - `wp_gamify_level_complete` - Complete a level (with conditional requirements)
+    - `wp_gamify_game_over` - Game over (with conditional requirements)
+    - `wp_gamify_score_milestone` - Reach score milestone (with conditional requirements)
+    - `wp_gamify_achievement_unlock` - Unlock achievement
+    - `wp_gamify_death` - Player death
+  - **Achievement System**:
+    - Score achievements: 10k, 50k, 100k
+    - Level achievements: level 10, 25, 50
+    - Speed achievements: <30s level completions
+    - Extensible via `wp_gamify_bridge_gamipress_achievements` filter
+  - **Rank System**: 7 tiers based on XP
+    - 0 XP: Beginner
+    - 100 XP: Casual Player
+    - 500 XP: Regular Gamer
+    - 1000 XP: Skilled Player
+    - 2000 XP: Pro Gamer
+    - 5000 XP: Gaming Master
+    - 10000 XP: Arcade Legend
+  - **Activity Logging**: Human-readable activity entries for GamiPress reports
+  - **Key Methods**:
+    - `handle_event($event_type, $user_id, $score, $data)` - Main event handler
+    - `award_points($event_type, $user_id, $score, $data)` - XP awards with multipliers
+    - `check_achievements($event_type, $user_id, $score, $data)` - Achievement checking
+    - `get_user_total_xp($user_id)` - Get user's XP balance
+    - `get_user_rank($user_id)` - Get user's rank title
+  - **Filters**:
+    - `wp_gamify_bridge_gamipress_point_type` - Customize point type (default: 'points')
+    - `wp_gamify_bridge_gamipress_xp_award` - Modify XP amount before award
+    - `wp_gamify_bridge_gamipress_achievements` - Modify achievements list
+  - **Actions**:
+    - `wp_gamify_bridge_gamipress_xp_awarded` - After XP awarded
+    - `wp_gamify_bridge_award_achievement` - When achievement earned
+
+- **WP_Gamify_Bridge_MyCred** (`inc/integrations/mycred.php`)
+  - **Lines**: 463 (enhanced from 109-line skeleton)
+  - **Purpose**: Complete MyCred integration with intelligent point awards
+  - **Points Multiplier System** (same as GamiPress + streak bonus):
+    - Score bonus: 1 point per 100 game points
+    - Level bonus: 5 points per level (e.g., level 5 = +25 points)
+    - Difficulty multipliers: easy (1.0x), normal (1.5x), hard (2.0x), expert (3.0x)
+    - Speed bonus: 50% extra points for completing levels in <60 seconds
+    - Streak bonus: 5% per streak level, max 50% at 10 streak
+  - **Custom Hook**: Registered with MyCred
+    - Hook ID: `retro_emulator`
+    - Title: "Retro Emulator Events"
+    - Description: "Award points for retro game events"
+  - **Rank Progression System**:
+    - Automatic rank updates based on point balance
+    - Same 7-tier system as GamiPress (Beginner → Arcade Legend)
+    - Uses MyCred's native rank functions when available
+  - **Badge System**:
+    - Score badges: score_achiever (10k), score_champion (50k), high_score_master (100k)
+    - Level badges: level_expert (25), level_master (50)
+    - Simplified badge storage using user meta
+    - Extensible via `wp_gamify_bridge_mycred_badges` filter
+  - **Descriptive Log Entries**: Human-readable point award reasons
+    - "Completed level 3 with score 1500"
+    - "Game over - Final score: 5000"
+    - "Reached score milestone: 10000 points"
+  - **Key Methods**:
+    - `handle_event($event_type, $user_id, $score, $data)` - Main event handler
+    - `award_points($event_type, $user_id, $score, $data)` - Points with multipliers
+    - `check_rank_progression($user_id)` - Automatic rank updates
+    - `check_badges($event_type, $user_id, $score, $data)` - Badge checking
+    - `get_user_total_points($user_id)` - Get user's point balance
+    - `get_user_rank($user_id)` - Get user's rank slug
+    - `get_user_rank_title($user_id)` - Get user's rank display name
+  - **Filters**:
+    - `wp_gamify_bridge_mycred_point_type` - Customize point type (default: 'mycred_default')
+    - `wp_gamify_bridge_mycred_points_award` - Modify points amount before award
+    - `wp_gamify_bridge_mycred_badges` - Modify badges list
+  - **Actions**:
+    - `wp_gamify_bridge_mycred_points_awarded` - After points awarded
+    - `wp_gamify_bridge_mycred_rank_changed` - When rank changes
+    - `wp_gamify_bridge_mycred_badge_awarded` - When badge earned
+    - `wp_gamify_bridge_mycred_activity_logged` - After activity logged
+
+**Both Integrations**:
+- Singleton pattern for memory efficiency
+- Conditionally loaded only if parent plugin is active
+- Hooked to `wp_gamify_bridge_gamipress_event` and `wp_gamify_bridge_mycred_event` actions
+- Work independently - can run both, either, or neither
+- Extensible via WordPress hooks and filters
+- Support for custom point/achievement tracking
+- Intelligent multiplier systems that consider context (score, level, difficulty, time, streak)
 
 ## API Contract
 
@@ -288,6 +383,8 @@ add_filter( 'wp_gamify_bridge_allowed_events', function( $events ) {
 ## Extension Points
 
 ### Action Hooks (for developers)
+
+**Core Event Actions**:
 - `wp_gamify_bridge_gamipress_event` - Fired when event should award GamiPress rewards
   - Args: `$event_type`, `$user_id`, `$score`, `$data`
 - `wp_gamify_bridge_mycred_event` - Fired when event should award MyCred points
@@ -297,7 +394,32 @@ add_filter( 'wp_gamify_bridge_allowed_events', function( $events ) {
 - `wp_gamify_bridge_event_processed` 🆕 - Fired after successful event processing
   - Args: `$log_id`, `$event_type`, `$user_id`, `$response`
 
+**GamiPress Actions** 🆕 (Phase 3):
+- `wp_gamify_bridge_gamipress_xp_awarded` - After XP awarded to user
+  - Args: `$user_id`, `$xp`, `$event_type`, `$data`
+- `wp_gamify_bridge_award_achievement` - When achievement earned
+  - Args: `$user_id`, `$achievement` (achievement slug)
+- Custom GamiPress triggers (for GamiPress requirements):
+  - `wp_gamify_game_start` - Args: `$user_id`, `$score`, `$data`
+  - `wp_gamify_level_complete` - Args: `$user_id`, `$score`, `$data`
+  - `wp_gamify_game_over` - Args: `$user_id`, `$score`, `$data`
+  - `wp_gamify_score_milestone` - Args: `$user_id`, `$score`, `$data`
+  - `wp_gamify_achievement_unlock` - Args: `$user_id`, `$score`, `$data`
+  - `wp_gamify_death` - Args: `$user_id`, `$score`, `$data`
+
+**MyCred Actions** 🆕 (Phase 3):
+- `wp_gamify_bridge_mycred_points_awarded` - After points awarded to user
+  - Args: `$user_id`, `$points`, `$event_type`, `$data`
+- `wp_gamify_bridge_mycred_rank_changed` - When user's rank changes
+  - Args: `$user_id`, `$old_rank`, `$new_rank`
+- `wp_gamify_bridge_mycred_badge_awarded` - When badge earned
+  - Args: `$user_id`, `$badge_slug`
+- `wp_gamify_bridge_mycred_activity_logged` - After activity logged
+  - Args: `$user_id`, `$event_type`, `$score`, `$data`
+
 ### Filters
+
+**Core Filters**:
 - `wp_gamify_bridge_allowed_events` 🆕 - Modify list of allowed event types
   - Args: `$allowed_events` (array)
   - Return: Modified array of allowed events
@@ -307,6 +429,28 @@ add_filter( 'wp_gamify_bridge_allowed_events', function( $events ) {
 - `wp_gamify_bridge_rate_limit_whitelist` 🆕 - Whitelist users from rate limiting
   - Args: `$whitelisted_users` (array of user IDs)
   - Return: Modified array of user IDs
+
+**GamiPress Filters** 🆕 (Phase 3):
+- `wp_gamify_bridge_gamipress_point_type` - Customize point type used
+  - Args: `$point_type` (string, default: 'points')
+  - Return: Point type slug
+- `wp_gamify_bridge_gamipress_xp_award` - Modify XP amount before awarding
+  - Args: `$xp`, `$event_type`, `$user_id`, `$score`, `$data`
+  - Return: Modified XP amount (integer)
+- `wp_gamify_bridge_gamipress_achievements` - Modify achievements to award
+  - Args: `$achievements` (array), `$event_type`, `$score`, `$data`
+  - Return: Modified array of achievement slugs
+
+**MyCred Filters** 🆕 (Phase 3):
+- `wp_gamify_bridge_mycred_point_type` - Customize point type used
+  - Args: `$point_type` (string, default: 'mycred_default')
+  - Return: Point type slug
+- `wp_gamify_bridge_mycred_points_award` - Modify points amount before awarding
+  - Args: `$points`, `$event_type`, `$user_id`, `$score`, `$data`
+  - Return: Modified points amount (integer)
+- `wp_gamify_bridge_mycred_badges` - Modify badges to award
+  - Args: `$badges` (array), `$event_type`, `$score`, `$data`, `$user_id`
+  - Return: Modified array of badge slugs
 
 ### Security Considerations
 - All validation uses WP_Error for consistent error handling
@@ -400,11 +544,12 @@ function onGameInitialized(gameName) {
 
 ## Project Status
 
-**Current Phase:** Phase 3 (Gamification System Integration) - see ROADMAP.md for detailed phases.
+**Current Phase:** Phase 4 (Room System) - see ROADMAP.md for detailed phases.
 
 **Completed Phases:**
 - ✅ Phase 0: Foundation & Setup - Plugin skeleton complete
 - ✅ Phase 1: Core REST API - Security, validation, rate limiting implemented
 - ✅ Phase 2: Emulator Integration - JavaScript bridge with retry logic and offline support
+- ✅ Phase 3: Gamification System Integration - GamiPress & MyCred with intelligent multipliers
 
 Plugin is in active development (v0.1.0). WebSocket/real-time features and advanced room management are planned for future phases.
