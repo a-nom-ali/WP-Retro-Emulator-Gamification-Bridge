@@ -244,8 +244,89 @@ composer run test
     - Warning when < 10 requests remaining per minute
     - Response includes remaining quota in rate_limit object
 
-- **room.js** (`js/room.js`)
-  - WebSocket/real-time communication layer (implementation TBD)
+- **room.js** (`js/room.js`) 🆕 Enhanced in Phase 5
+  - **Lines**: 704 (completely rewritten from 236-line skeleton)
+  - **Purpose**: Real-time room communication with polling and WebSocket upgrade path
+  - **Core Object**: `window.WPGamifyRoom`
+
+  - **Polling System**:
+    - `pollingFrequency: 3000` - Poll every 3 seconds for room updates
+    - `presenceFrequency: 30000` - Update presence every 30 seconds
+    - Automatic polling start/stop based on network status
+    - Immediate poll when page becomes visible again
+    - Polls endpoints:
+      - `GET /wp-json/gamify/v1/room/{id}/players` - Check player joins/leaves
+      - `GET /wp-json/gamify/v1/room/{id}/stats` - Check for new events
+
+  - **Notification System**:
+    - 6 notification types: info, join, leave, event, success, error
+    - Color-coded notifications with icons and timestamps
+    - Max 20 notifications (auto-cleanup of oldest)
+    - slideDown animation for new notifications
+    - Notification queue with automatic display
+    - Custom event trigger: `wp_gamify_room_notification`
+
+  - **Player Presence**:
+    - 30-second presence updates to server (POST /presence)
+    - Real-time player list updates on frontend
+    - Join/leave detection with notifications
+    - Player status indicators with pulse animation
+    - Last seen timestamps
+
+  - **Network Resilience**:
+    - Online/offline event listeners
+    - Automatic polling stop when offline
+    - Automatic polling resume when online
+    - Network status indicator (fixed position)
+    - Graceful degradation without errors
+
+  - **WebSocket Upgrade Path**:
+    - Prepared `connectWebSocket()` method (commented implementation)
+    - Fallback to polling if WebSocket unavailable
+    - Example Supabase Realtime integration code
+    - Easy upgrade path for production deployment
+
+  - **Page Visibility Handling**:
+    - Detects when user switches tabs
+    - Immediate poll when tab becomes visible
+    - Potential future optimization: reduce polling when hidden
+
+  - **Event Handling**:
+    - Listens to `wp_gamify_event` custom event from emulator
+    - Shows notifications for game events (level complete, game over, etc.)
+    - Broadcasts events to room via REST API
+
+  - **Debug Features**:
+    - `wpGamifyRoomStats()` - Display room statistics in console.table
+    - Debug mode controlled by `config.debug`
+    - Color-coded console logging
+    - Poll count and player count tracking
+
+  - **Key Methods**:
+    - `init()` - Initialize room system
+    - `loadRoomData()` - Get room info from DOM data attributes
+    - `startPolling()` - Begin polling loop
+    - `stopPolling()` - Stop polling (on offline)
+    - `pollRoomUpdates()` - Check for new players and events
+    - `updatePlayers(newPlayers)` - Update player list and detect joins/leaves
+    - `showNotification(type, message)` - Display notification to user
+    - `updatePresence()` - Send presence update to server
+    - `handleGamifyEvent(data)` - Handle events from emulator
+    - `connectWebSocket()` - WebSocket connection (future upgrade)
+
+  - **Configuration**:
+    - Room ID from `data-room-id` attribute
+    - User info from `data-current-user-id` and `data-current-user-name`
+    - REST URL from `data-rest-url`
+    - Nonce from `data-nonce`
+
+  - **Statistics Tracking**:
+    - `pollCount` - Number of polls performed
+    - `lastPollTime` - Timestamp of last poll
+    - `players` - Current player list
+    - `isOnline` - Network status
+    - `pollingInterval` - Interval ID for polling
+    - `presenceInterval` - Interval ID for presence updates
 
 ### Gamification Integrations 🆕 Enhanced in Phase 3
 
@@ -635,9 +716,81 @@ function onGameInitialized(gameName) {
 }
 ```
 
+### Room.js Usage Examples 🆕 (Phase 5)
+
+#### Basic Room Initialization
+```javascript
+// Room automatically initializes on page load if room shortcode present
+// Access room instance globally
+console.log(WPGamifyRoom.roomId);
+console.log(WPGamifyRoom.players);
+```
+
+#### Checking Room Statistics
+```javascript
+// In browser console
+wpGamifyRoomStats();
+
+// Returns and displays:
+// Room ID: room-abc123
+// Current User: johndoe (ID: 1)
+// Players: 5
+// Poll Count: 42
+// Last Poll: 2025-01-05 12:34:56
+// Online: Yes
+```
+
+#### Manual Notifications
+```javascript
+// Show custom notification
+WPGamifyRoom.showNotification('info', 'Welcome to the room!');
+WPGamifyRoom.showNotification('success', 'Achievement unlocked!');
+WPGamifyRoom.showNotification('error', 'Connection lost');
+```
+
+#### Listening to Room Events
+```javascript
+// Listen for notifications
+document.addEventListener('wp_gamify_room_notification', function(e) {
+    console.log('Notification:', e.detail.type, e.detail.message);
+});
+
+// Listen for emulator events
+document.addEventListener('wp_gamify_event', function(e) {
+    console.log('Game event:', e.detail);
+    // WPGamifyRoom automatically handles and shows notifications
+});
+```
+
+#### Manual Presence Update
+```javascript
+// Force immediate presence update (normally automatic every 30s)
+WPGamifyRoom.updatePresence();
+```
+
+#### Integrating Custom Emulator Events
+```javascript
+// In your game code
+function onPlayerAchievement(achievementName) {
+    // Trigger WordPress event
+    const event = new CustomEvent('wp_gamify_event', {
+        detail: {
+            event: 'achievement_unlock',
+            data: { achievement: achievementName }
+        }
+    });
+    document.dispatchEvent(event);
+
+    // WPGamifyRoom will:
+    // 1. Show notification in room
+    // 2. Send to WordPress REST API
+    // 3. Broadcast to other players (via polling)
+}
+```
+
 ## Project Status
 
-**Current Phase:** Phase 5 (Real-time Broadcasting) - see ROADMAP.md for detailed phases.
+**Current Phase:** Phase 6 (Admin Dashboard) - see ROADMAP.md for detailed phases.
 
 **Completed Phases:**
 - ✅ Phase 0: Foundation & Setup - Plugin skeleton complete
@@ -645,5 +798,6 @@ function onGameInitialized(gameName) {
 - ✅ Phase 2: Emulator Integration - JavaScript bridge with retry logic and offline support
 - ✅ Phase 3: Gamification System Integration - GamiPress & MyCred with intelligent multipliers
 - ✅ Phase 4: Room System - Complete room management with CRUD, player tracking, admin UI
+- ✅ Phase 5: Real-time Broadcasting - Polling-based real-time updates with WebSocket upgrade path
 
-Plugin is in active development (v0.1.0). WebSocket/real-time features are planned for Phase 5.
+Plugin is in active development (v0.1.0). Real-time features use polling with WebSocket upgrade path prepared.

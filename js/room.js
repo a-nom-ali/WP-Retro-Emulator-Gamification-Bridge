@@ -1,7 +1,8 @@
 /**
  * Room Management for WP Gamify Bridge
  *
- * Handles real-time room updates and player presence.
+ * Handles real-time room updates, player presence, and notifications via polling.
+ * Designed with graceful degradation and WebSocket upgrade path.
  *
  * @package WP_Gamify_Bridge
  */
@@ -30,9 +31,49 @@
         players: [],
 
         /**
-         * WebSocket connection (if available).
+         * Last seen event ID (for incremental updates).
+         */
+        lastEventId: 0,
+
+        /**
+         * Polling interval ID.
+         */
+        pollingInterval: null,
+
+        /**
+         * Presence interval ID.
+         */
+        presenceInterval: null,
+
+        /**
+         * Polling frequency in milliseconds.
+         */
+        pollingFrequency: 3000, // 3 seconds
+
+        /**
+         * Presence update frequency in milliseconds.
+         */
+        presenceFrequency: 30000, // 30 seconds
+
+        /**
+         * WebSocket connection (for future upgrade).
          */
         socket: null,
+
+        /**
+         * Room data cache.
+         */
+        roomData: null,
+
+        /**
+         * Is polling active?
+         */
+        isPolling: false,
+
+        /**
+         * Notification queue.
+         */
+        notifications: [],
 
         /**
          * Initialize room manager.
@@ -46,20 +87,38 @@
 
             this.roomId = $roomElement.data('room-id');
 
-            if (this.config.debug) {
-                console.log('[WP Gamify Room] Initialized for room:', this.roomId);
+            if (!this.roomId) {
+                console.error('[WP Gamify Room] No room ID found');
+                return;
             }
+
+            // Use config values if available.
+            if (this.config.roomId) {
+                this.roomId = this.config.roomId;
+            }
+
+            if (this.config.presenceInterval) {
+                this.presenceFrequency = this.config.presenceInterval;
+            }
+
+            this.log('info', 'Initializing room: ' + this.roomId);
 
             // Initialize UI
             this.initUI();
 
-            // Join room
-            this.joinRoom();
+            // Load initial room data
+            this.loadRoomData();
 
             // Setup event listeners
             this.setupEventListeners();
 
-            // Try to connect WebSocket if configured
+            // Start polling for updates
+            this.startPolling();
+
+            // Start presence updates
+            this.startPresenceUpdates();
+
+            // Try WebSocket connection (placeholder for future)
             this.connectWebSocket();
         },
 
@@ -67,84 +126,352 @@
          * Initialize UI elements.
          */
         initUI: function() {
-            // UI initialization if needed
-            // Styles are now loaded via wp_enqueue_style in class-script-enqueuer.php
+            const self = this;
 
-            if (this.config.debug) {
-                console.log('[WP Gamify Room] UI initialized');
+            // Add notification container if not exists
+            if (!$('.room-notifications .notification-list').length) {
+                $('.wp-gamify-room').append(
+                    '<div class="room-notifications">' +
+                    '<h3>Room Activity</h3>' +
+                    '<div class="notification-list"></div>' +
+                    '</div>'
+                );
             }
+
+            // Make player status indicators pulsate
+            this.updatePresenceIndicators();
+
+            this.log('info', 'UI initialized');
         },
 
         /**
-         * Join the room.
+         * Load room data from API.
          */
-        joinRoom: function() {
-            if (this.config.debug) {
-                console.log('[WP Gamify Room] Joining room:', this.roomId);
-            }
+        loadRoomData: function() {
+            const self = this;
 
-            // Add current user to players list
-            this.addPlayer(this.config.userName, this.config.userId);
-
-            // Broadcast join event (would be handled by WebSocket in production)
-            this.broadcastMessage(this.config.userName + ' joined the room');
+            $.ajax({
+                url: this.config.roomUrl + '/' + this.roomId,
+                type: 'GET',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', self.config.nonce);
+                },
+                success: function(response) {
+                    if (response.success && response.room) {
+                        self.roomData = response.room;
+                        self.players = response.room.players || [];
+                        self.updatePlayerList();
+                        self.updatePlayerCount();
+                        self.log('success', 'Room data loaded', response.room);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    self.log('error', 'Failed to load room data', error);
+                }
+            });
         },
 
         /**
-         * Add player to room.
+         * Start polling for room updates.
+         */
+        startPolling: function() {
+            if (this.isPolling) {
+                return;
+            }
+
+            this.isPolling = true;
+            const self = this;
+
+            // Initial poll
+            this.pollRoomUpdates();
+
+            // Setup interval
+            this.pollingInterval = setInterval(function() {
+                self.pollRoomUpdates();
+            }, this.pollingFrequency);
+
+            this.log('info', 'Polling started (every ' + this.pollingFrequency + 'ms)');
+        },
+
+        /**
+         * Stop polling.
+         */
+        stopPolling: function() {
+            if (this.pollingInterval) {
+                clearInterval(this.pollingInterval);
+                this.pollingInterval = null;
+                this.isPolling = false;
+                this.log('info', 'Polling stopped');
+            }
+        },
+
+        /**
+         * Poll for room updates.
+         */
+        pollRoomUpdates: function() {
+            const self = this;
+
+            // Get players
+            $.ajax({
+                url: this.config.roomUrl + '/' + this.roomId + '/players',
+                type: 'GET',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', self.config.nonce);
+                },
+                success: function(response) {
+                    if (response.success && response.players) {
+                        self.updatePlayers(response.players);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    if (xhr.status === 401 || xhr.status === 403) {
+                        self.stopPolling();
+                        self.log('error', 'Authentication failed - polling stopped');
+                    }
+                }
+            });
+
+            // Get room stats for event updates
+            $.ajax({
+                url: this.config.roomUrl + '/' + this.roomId + '/stats',
+                type: 'GET',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', self.config.nonce);
+                },
+                success: function(response) {
+                    if (response.success && response.stats) {
+                        self.processRoomStats(response.stats);
+                    }
+                }
+            });
+        },
+
+        /**
+         * Process room statistics.
          *
-         * @param {string} username - Player username
-         * @param {int} userId - Player user ID
+         * @param {object} stats - Room stats
          */
-        addPlayer: function(username, userId) {
-            const player = {
-                username: username,
-                userId: userId,
-                joinedAt: Date.now()
-            };
+        processRoomStats: function(stats) {
+            // Update event count if changed
+            if (this.roomData && stats.event_count > this.roomData.event_count) {
+                const newEvents = stats.event_count - this.roomData.event_count;
+                this.showNotification('info', newEvents + ' new event(s) in room');
+            }
 
-            this.players.push(player);
-            this.updatePlayerCount();
-
-            if (this.config.debug) {
-                console.log('[WP Gamify Room] Player added:', player);
+            // Store updated stats
+            if (this.roomData) {
+                this.roomData.event_count = stats.event_count;
             }
         },
 
         /**
-         * Remove player from room.
+         * Update players list.
          *
-         * @param {int} userId - Player user ID
+         * @param {array} newPlayers - New players array
          */
-        removePlayer: function(userId) {
-            this.players = this.players.filter(p => p.userId !== userId);
+        updatePlayers: function(newPlayers) {
+            const oldPlayerIds = this.players.map(p => p.user_id);
+            const newPlayerIds = newPlayers.map(p => p.user_id);
+
+            // Check for new players
+            newPlayers.forEach(player => {
+                if (!oldPlayerIds.includes(player.user_id)) {
+                    this.showNotification('join', player.user_name + ' joined the room');
+                }
+            });
+
+            // Check for left players
+            this.players.forEach(player => {
+                if (!newPlayerIds.includes(player.user_id)) {
+                    this.showNotification('leave', player.user_name + ' left the room');
+                }
+            });
+
+            // Update players
+            this.players = newPlayers;
+            this.updatePlayerList();
             this.updatePlayerCount();
+            this.updatePresenceIndicators();
+        },
+
+        /**
+         * Update player list in UI.
+         */
+        updatePlayerList: function() {
+            const $playerList = $('.room-players .player-list');
+
+            if (!$playerList.length) {
+                return;
+            }
+
+            $playerList.empty();
+
+            this.players.forEach(player => {
+                const $playerItem = $('<li>')
+                    .addClass('player-item')
+                    .attr('data-user-id', player.user_id);
+
+                const $playerName = $('<span>')
+                    .addClass('player-name')
+                    .text(player.user_name);
+
+                const $playerStatus = $('<span>')
+                    .addClass('player-status online')
+                    .attr('title', 'Online');
+
+                $playerItem.append($playerName, $playerStatus);
+                $playerList.append($playerItem);
+            });
+
+            this.log('info', 'Player list updated (' + this.players.length + ' players)');
         },
 
         /**
          * Update player count display.
          */
         updatePlayerCount: function() {
-            $('.room-status .player-count').text(this.players.length + '/10');
+            const $playerCount = $('.room-status .player-count');
+            const maxPlayers = $playerCount.data('max') || 10;
+            const currentCount = this.players.length;
+
+            $playerCount.text(currentCount + '/' + maxPlayers);
+            $playerCount.attr('data-current', currentCount);
+
+            // Update color based on capacity
+            $playerCount.removeClass('low medium high');
+            if (currentCount / maxPlayers < 0.5) {
+                $playerCount.addClass('low');
+            } else if (currentCount / maxPlayers < 0.8) {
+                $playerCount.addClass('medium');
+            } else {
+                $playerCount.addClass('high');
+            }
         },
 
         /**
-         * Broadcast message to room.
-         *
-         * @param {string} message - Message to broadcast
+         * Update presence indicators.
          */
-        broadcastMessage: function(message) {
-            const $chat = $('.room-chat');
-            const $message = $('<div>')
-                .addClass('room-chat-message')
-                .text(message);
+        updatePresenceIndicators: function() {
+            $('.player-status.online').each(function() {
+                $(this).addClass('pulse');
+            });
 
-            $chat.append($message);
-            $chat.scrollTop($chat[0].scrollHeight);
+            // Remove pulse after animation
+            setTimeout(function() {
+                $('.player-status').removeClass('pulse');
+            }, 2000);
+        },
 
-            if (this.config.debug) {
-                console.log('[WP Gamify Room] Broadcast:', message);
+        /**
+         * Start presence updates.
+         */
+        startPresenceUpdates: function() {
+            const self = this;
+
+            // Initial presence update
+            this.updatePresence();
+
+            // Setup interval
+            this.presenceInterval = setInterval(function() {
+                self.updatePresence();
+            }, this.presenceFrequency);
+
+            this.log('info', 'Presence updates started (every ' + this.presenceFrequency + 'ms)');
+        },
+
+        /**
+         * Stop presence updates.
+         */
+        stopPresenceUpdates: function() {
+            if (this.presenceInterval) {
+                clearInterval(this.presenceInterval);
+                this.presenceInterval = null;
+                this.log('info', 'Presence updates stopped');
             }
+        },
+
+        /**
+         * Update user presence.
+         */
+        updatePresence: function() {
+            const self = this;
+
+            $.ajax({
+                url: this.config.roomUrl + '/' + this.roomId + '/presence',
+                type: 'POST',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', self.config.nonce);
+                },
+                success: function(response) {
+                    if (response.success) {
+                        self.log('info', 'Presence updated');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    self.log('error', 'Presence update failed', error);
+                }
+            });
+        },
+
+        /**
+         * Show notification.
+         *
+         * @param {string} type - Notification type (info, join, leave, event, success, error)
+         * @param {string} message - Notification message
+         */
+        showNotification: function(type, message) {
+            const $notificationList = $('.room-notifications .notification-list');
+
+            if (!$notificationList.length) {
+                return;
+            }
+
+            const timestamp = new Date().toLocaleTimeString();
+
+            const $notification = $('<div>')
+                .addClass('notification')
+                .addClass('notification-' + type)
+                .html(
+                    '<span class="notification-icon">' + this.getNotificationIcon(type) + '</span>' +
+                    '<span class="notification-message">' + message + '</span>' +
+                    '<span class="notification-time">' + timestamp + '</span>'
+                );
+
+            // Add with animation
+            $notification.hide().prependTo($notificationList).slideDown(300);
+
+            // Limit notifications (keep last 20)
+            const $notifications = $notificationList.find('.notification');
+            if ($notifications.length > 20) {
+                $notifications.slice(20).remove();
+            }
+
+            // Trigger custom event
+            $(document).trigger('wp_gamify_room_notification', {
+                type: type,
+                message: message,
+                timestamp: timestamp
+            });
+
+            this.log('info', 'Notification: ' + message);
+        },
+
+        /**
+         * Get notification icon.
+         *
+         * @param {string} type - Notification type
+         * @returns {string} Icon HTML
+         */
+        getNotificationIcon: function(type) {
+            const icons = {
+                info: 'ℹ',
+                join: '➕',
+                leave: '➖',
+                event: '🎮',
+                success: '✓',
+                error: '✗'
+            };
+            return icons[type] || icons.info;
         },
 
         /**
@@ -153,75 +480,207 @@
         setupEventListeners: function() {
             const self = this;
 
-            // Listen for gamification events
+            // Listen for gamification events from emulator
             $(document).on('wp_gamify_event', function(e, data) {
                 self.handleGamifyEvent(data);
+            });
+
+            // Listen for broadcast events (from server)
+            $(document).on('wp_gamify_broadcast', function(e, data) {
+                self.handleBroadcastEvent(data);
+            });
+
+            // Handle page visibility changes
+            $(document).on('visibilitychange', function() {
+                if (document.hidden) {
+                    self.log('info', 'Page hidden - reducing polling');
+                    // Could reduce polling frequency here
+                } else {
+                    self.log('info', 'Page visible - resuming normal polling');
+                    self.pollRoomUpdates(); // Immediate poll on return
+                }
             });
 
             // Handle page unload (leave room)
             $(window).on('beforeunload', function() {
                 self.leaveRoom();
             });
+
+            // Handle network status
+            $(window).on('online', function() {
+                self.log('success', 'Network connection restored');
+                self.showNotification('success', 'Connection restored');
+                self.startPolling();
+            });
+
+            $(window).on('offline', function() {
+                self.log('error', 'Network connection lost');
+                self.showNotification('error', 'Connection lost - updates paused');
+                self.stopPolling();
+            });
         },
 
         /**
-         * Handle gamification event.
+         * Handle gamification event from emulator.
          *
          * @param {object} data - Event data
          */
         handleGamifyEvent: function(data) {
             let message = '';
+            let playerName = data.player || this.config.userName;
 
             switch(data.event) {
                 case 'level_complete':
-                    message = `${data.player} completed level ${data.data.level}!`;
+                    message = playerName + ' completed level ' + (data.data.level || '?') + '!';
                     break;
                 case 'game_over':
-                    message = `${data.player} game over - Score: ${data.score}`;
+                    message = playerName + ' game over - Score: ' + (data.score || 0);
                     break;
                 case 'score_milestone':
-                    message = `${data.player} reached ${data.score} points!`;
+                    message = playerName + ' reached ' + (data.score || 0) + ' points!';
+                    break;
+                case 'death':
+                    message = playerName + ' died';
+                    break;
+                case 'game_start':
+                    message = playerName + ' started playing';
                     break;
                 default:
-                    message = `${data.player} triggered ${data.event}`;
+                    message = playerName + ' triggered ' + data.event;
             }
 
-            this.broadcastMessage(message);
+            this.showNotification('event', message);
         },
 
         /**
-         * Connect to WebSocket server (if configured).
+         * Handle broadcast event from server.
+         *
+         * @param {object} data - Broadcast data
+         */
+        handleBroadcastEvent: function(data) {
+            this.log('info', 'Broadcast received', data);
+
+            if (data.event_type) {
+                this.handleGamifyEvent({
+                    event: data.event_type,
+                    player: data.user_name || 'Player',
+                    score: data.score || 0,
+                    data: data.data || {}
+                });
+            }
+        },
+
+        /**
+         * Connect to WebSocket server (placeholder for future upgrade).
          */
         connectWebSocket: function() {
-            // Placeholder for WebSocket connection
-            // This would connect to Supabase, Pusher, or custom WebSocket server
+            // Placeholder for WebSocket implementation
+            // This would connect to Supabase Realtime, Pusher, or custom WebSocket server
 
-            if (this.config.debug) {
-                console.log('[WP Gamify Room] WebSocket connection would be initialized here');
+            this.log('info', 'WebSocket: Not configured (using polling)');
+
+            // Future implementation:
+            /*
+            if (this.config.websocketUrl) {
+                this.socket = new WebSocket(this.config.websocketUrl);
+
+                this.socket.onopen = () => {
+                    this.log('success', 'WebSocket connected');
+                    this.stopPolling(); // Switch from polling to WebSocket
+                    this.socket.send(JSON.stringify({
+                        action: 'join',
+                        room_id: this.roomId,
+                        user_id: this.config.userId
+                    }));
+                };
+
+                this.socket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    this.handleBroadcastEvent(data);
+                };
+
+                this.socket.onerror = (error) => {
+                    this.log('error', 'WebSocket error', error);
+                    this.startPolling(); // Fallback to polling
+                };
+
+                this.socket.onclose = () => {
+                    this.log('info', 'WebSocket disconnected');
+                    this.startPolling(); // Fallback to polling
+                };
             }
-
-            // Example structure:
-            // this.socket = new WebSocket('wss://your-server.com');
-            // this.socket.onmessage = (event) => {
-            //     this.handleSocketMessage(JSON.parse(event.data));
-            // };
+            */
         },
 
         /**
          * Leave the room.
          */
         leaveRoom: function() {
-            if (this.config.debug) {
-                console.log('[WP Gamify Room] Leaving room');
-            }
+            this.log('info', 'Leaving room');
+
+            // Stop polling and presence updates
+            this.stopPolling();
+            this.stopPresenceUpdates();
 
             // Disconnect WebSocket if connected
             if (this.socket) {
                 this.socket.close();
             }
 
-            // Remove player from list
-            this.removePlayer(this.config.userId);
+            // Send leave request to server
+            const self = this;
+            $.ajax({
+                url: this.config.roomUrl + '/' + this.roomId + '/leave',
+                type: 'POST',
+                async: false, // Synchronous for beforeunload
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', self.config.nonce);
+                }
+            });
+        },
+
+        /**
+         * Log message with styling.
+         *
+         * @param {string} level - Log level (info, success, error)
+         * @param {string} message - Log message
+         * @param {*} data - Optional data
+         */
+        log: function(level, message, data) {
+            if (!this.config.debug) {
+                return;
+            }
+
+            const styles = {
+                info: 'color: #2196F3',
+                success: 'color: #4CAF50',
+                error: 'color: #F44336'
+            };
+
+            const prefix = '[WP Gamify Room]';
+            const style = styles[level] || styles.info;
+
+            if (data) {
+                console.log('%c' + prefix + ' ' + message, style, data);
+            } else {
+                console.log('%c' + prefix + ' ' + message, style);
+            }
+        },
+
+        /**
+         * Get room statistics.
+         *
+         * @returns {object} Room stats
+         */
+        getStats: function() {
+            return {
+                roomId: this.roomId,
+                playerCount: this.players.length,
+                isPolling: this.isPolling,
+                pollingFrequency: this.pollingFrequency,
+                hasWebSocket: this.socket !== null,
+                notificationCount: $('.notification-list .notification').length
+            };
         }
     };
 
@@ -231,5 +690,14 @@
     $(document).ready(function() {
         WPGamifyRoom.init();
     });
+
+    /**
+     * Export debug function.
+     */
+    window.wpGamifyRoomStats = function() {
+        const stats = WPGamifyRoom.getStats();
+        console.table(stats);
+        return stats;
+    };
 
 })(jQuery);
