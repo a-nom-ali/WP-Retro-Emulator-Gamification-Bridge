@@ -267,24 +267,88 @@ Create a robust, modular WordPress plugin that bridges retro game emulators with
 
 ---
 
-### **Phase 9: Testing & Documentation** ✅
+### **Phase 8.5: Hybrid Architecture Implementation** ✅ (Completed)
+**Goal:** Align with "The WordPress Way" using hybrid approach
+
+**Background:** After initial implementation used custom tables for both rooms and events, architectural review determined this didn't fully align with WordPress best practices. The solution: hybrid architecture.
+
+**Tasks:**
+1. [x] Create Custom Post Type infrastructure (`gamify_room`, `gamify_event`)
+2. [x] Build CPT-based Room Manager (~650 lines)
+3. [x] Document justification for keeping events in custom table
+4. [x] Create hybrid migration script
+5. [x] Update all documentation for hybrid approach
+6. [x] Maintain 100% API backward compatibility
+
+**Key Files:**
+- ✅ `inc/class-post-types.php` - CPT registration
+- ✅ `inc/class-room-manager-cpt.php` - New CPT-based Room Manager
+- ✅ `inc/class-database.php` - Updated with architecture documentation
+- ✅ `migrate-rooms-to-cpt.php` - Hybrid migration script
+- ✅ `HYBRID-IMPLEMENTATION.md` - Complete migration guide
+- ✅ `REFACTOR-STATUS.md` - Updated status document
+
+**Hybrid Architecture:**
+- **Rooms → Custom Post Type (gamify_room)**
+  - Low-medium volume (hundreds, not millions)
+  - Rich metadata benefits from WordPress admin UI
+  - Standard CRUD operations
+  - Uses: `wp_insert_post()`, `get_posts()`, `update_post_meta()`
+
+- **Events → Custom Table (wp_gamify_events)**
+  - High-volume time-series logs (potentially millions)
+  - Simple structure optimized for performance
+  - Direct queries faster than post meta joins
+  - Justified like WordPress core's wp_comments table
+
+**Acceptance Criteria:**
+- ✅ CPT infrastructure registered and functional
+- ✅ New Room Manager uses WordPress APIs exclusively
+- ✅ 100% API compatibility maintained (no breaking changes)
+- ✅ Events justification documented with references
+- ✅ Migration path provided with rollback procedures
+- ✅ Follows "The WordPress Way" guidelines
+
+**Benefits:**
+- Native WordPress admin UI for rooms
+- Better extensibility for room features
+- High-performance event logging preserved
+- Alignment with WordPress coding standards
+- Appropriate use of custom tables where justified
+
+---
+
+### **Phase 9: Testing & Documentation** 🔄 (In Progress)
 **Goal:** Production-ready quality assurance
 
 **Tasks:**
-1. Write PHPUnit tests
-2. Create JavaScript unit tests
-3. Perform security audit
-4. Load testing
-5. Create user documentation
-6. Write developer API docs
-7. Build example implementations
-8. Create video tutorials
+1. [x] Write PHPUnit tests (base framework created)
+2. [x] Create Playwright E2E tests (smoke tests created)
+3. [ ] Expand test coverage
+4. [ ] Perform security audit
+5. [ ] Load testing
+6. [ ] Create user documentation
+7. [ ] Write developer API docs
+8. [ ] Build example implementations
+9. [ ] Create video tutorials
+
+**Test Suite Created:**
+- ✅ PHPUnit configuration (`phpunit.xml.dist`)
+- ✅ Test bootstrap (`tests/bootstrap.php`)
+- ✅ Base test case class
+- ✅ Unit tests (database, validator, rate limiter, room manager, integrations)
+- ✅ Playwright config (`playwright.config.js`)
+- ✅ E2E helpers (`tests/e2e/helpers.js`)
+- ✅ Smoke tests (plugin activation, REST API, admin, JavaScript)
+- ✅ Test documentation (`tests/README.md`)
+- ✅ Environment example (`.env.testing.example`)
 
 **Deliverables:**
-- Complete test coverage
-- Security certification
-- User manual
-- Developer guide
+- [x] Test infrastructure complete
+- [ ] Complete test coverage
+- [ ] Security certification
+- [ ] User manual
+- [ ] Developer guide
 
 ---
 
@@ -327,10 +391,12 @@ Create a robust, modular WordPress plugin that bridges retro game emulators with
 - Phase 6 - Admin Dashboard ✅
 - Phase 7 - Extended Emulator Support ✅
 - Phase 8 - Advanced Features ✅ (Social features deferred)
-**Next Milestone:** Production-ready testing and documentation
+- Phase 8.5 - Hybrid Architecture ✅ (Rooms as CPT, events as custom table)
+**Next Milestone:** Complete testing and documentation
 **Blocked By:** None
-**Plugin Status:** Feature-complete for v1.0 release
+**Plugin Status:** Architecture aligned with WordPress best practices, ready for testing
 **Deferred Features:** Chat system, challenges/tournaments, team support (planned for v2.0)
+**Recent Changes:** Hybrid architecture implemented - rooms migrated to CPT while events remain in custom table (justified)
 
 ---
 
@@ -368,6 +434,61 @@ See `CONTRIBUTING.md` for development guidelines.
 **Maintained By:** Nielo Wait
 
 ## 📝 Change Log
+
+### 2025-01-05 (Phase 8.5 - Hybrid Architecture)
+- ✅ Completed Phase 8.5: Hybrid Architecture Implementation
+- **Background:** Architectural review determined custom tables for all data didn't align with WordPress best practices
+- **Solution:** Hybrid approach - CPT for rooms, custom table for events
+- **Created CPT Infrastructure:**
+  - Registered `gamify_room` Custom Post Type
+  - Registered `gamify_event` Custom Post Type (available but unused in hybrid)
+  - Full REST API support for CPTs
+  - Integrated with WordPress admin UI
+- **Created CPT-Based Room Manager** (inc/class-room-manager-cpt.php - 650 lines)
+  - Complete rewrite using WordPress APIs
+  - Uses `wp_insert_post()`, `get_posts()`, `wp_update_post()`, `wp_delete_post()`
+  - Post meta for room data: `_room_id`, `_max_players`, `_room_data`, `_player_count`
+  - 100% API compatibility with old Room Manager (no breaking changes)
+  - All CRUD operations: create, get, list, update, delete
+  - Player management: join, leave, presence tracking
+  - Internal caching with `wp_cache_set/get()`
+  - Scheduled cleanup for inactive players
+  - Shortcode support maintained: `[retro_room id="room-xxx"]`
+- **Updated Database Class** (inc/class-database.php)
+  - Added comprehensive documentation explaining hybrid architecture
+  - Events table creation (justified for high-volume logging)
+  - Rooms table marked as legacy/backward compatibility
+  - Clear comments explaining WordPress best practices alignment
+  - References to WordPress core examples (wp_comments, wp_links)
+- **Created Hybrid Migration Script** (migrate-rooms-to-cpt.php)
+  - Migrates only rooms to CPT (events stay in custom table)
+  - Preserves all room metadata and player data
+  - Web-based UI with progress reporting
+  - Safety checks and verification steps
+  - Instructions for dropping old rooms table after verification
+- **Documentation:**
+  - `HYBRID-IMPLEMENTATION.md` - Complete hybrid migration guide
+  - `REFACTOR-STATUS.md` - Updated with hybrid completion status
+  - Architecture diagrams and justifications
+  - API compatibility examples
+  - Rollback procedures
+  - Deployment steps
+- **Why Hybrid:**
+  - **Rooms as CPT:** Low-medium volume, rich metadata, benefits from WordPress admin UI
+  - **Events as custom table:** High-volume logs (potentially millions), simple structure, performance-critical
+  - Aligns with "The WordPress Way" while maintaining performance
+  - Follows WordPress core examples (wp_comments for high-volume interactions)
+- **API Compatibility:**
+  - Room Endpoint requires NO changes (100% compatible)
+  - Admin pages work without changes
+  - Dashboard works without changes
+  - All existing code continues to work
+- **Benefits:**
+  - Native WordPress admin UI for rooms
+  - Better extensibility for room features
+  - High-performance event logging preserved
+  - Alignment with WordPress coding standards
+  - Appropriate use of custom tables where justified
 
 ### 2025-01-05 (Phase 8)
 - ✅ Phase 8 marked as substantially complete
