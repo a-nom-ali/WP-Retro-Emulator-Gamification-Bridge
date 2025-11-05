@@ -79,11 +79,33 @@ composer run test
   - Manages database tables creation and queries
   - Methods: `log_event()`, `get_events()`, `create_tables()`
 
+- **WP_Gamify_Bridge_Event_Validator** (`inc/class-event-validator.php`) 🆕
+  - Comprehensive input validation for all event data
+  - Validates event types, scores, user IDs, room IDs, and event data
+  - Prevents abuse with max score (999999999) and max data size (10000 chars)
+  - Returns WP_Error objects with HTTP status codes for failed validation
+  - Extensible via filters: `wp_gamify_bridge_allowed_events`
+
+- **WP_Gamify_Bridge_Rate_Limiter** (`inc/class-rate-limiter.php`) 🆕
+  - Prevents API abuse with per-user rate limiting
+  - Limits: 60 requests/minute, 500 requests/hour (configurable)
+  - Uses transients for temporary storage (auto-expires)
+  - Supports user whitelisting via filter: `wp_gamify_bridge_rate_limit_whitelist`
+  - Methods: `check_rate_limit()`, `increment_counters()`, `get_rate_limit_status()`, `reset_counters()`
+
 - **WP_Gamify_Bridge_Endpoint** (`inc/class-gamify-endpoint.php`)
-  - REST API endpoint at `/wp-json/gamify/v1/event`
-  - Handles POST requests with nonce verification and user authentication
+  - REST API endpoints:
+    - `POST /wp-json/gamify/v1/event` - Submit events (authenticated)
+    - `GET /wp-json/gamify/v1/health` - Health check (public)
+    - `GET /wp-json/gamify/v1/rate-limit` - Rate limit status (authenticated)
+  - Integrates validator and rate limiter for security
+  - Returns detailed error responses with proper HTTP status codes
   - Allowed event types: `level_complete`, `game_over`, `score_milestone`, `death`, `game_start`, `achievement_unlock`
-  - Triggers action hooks: `wp_gamify_bridge_gamipress_event`, `wp_gamify_bridge_mycred_event`, `wp_gamify_bridge_broadcast_event`
+  - Triggers action hooks:
+    - `wp_gamify_bridge_gamipress_event`
+    - `wp_gamify_bridge_mycred_event`
+    - `wp_gamify_bridge_broadcast_event`
+    - `wp_gamify_bridge_event_processed`
 
 - **WP_Gamify_Bridge_Room_Manager** (`inc/class-room-manager.php`)
   - Manages room creation and retrieval
@@ -115,43 +137,132 @@ Both are conditionally loaded only if their parent plugins are active.
 
 ## API Contract
 
-### REST Endpoint
+### REST Endpoints
+
+#### 1. Event Submission
 ```
 POST /wp-json/gamify/v1/event
 Headers: X-WP-Nonce: {wp_rest_nonce}
+Auth: Required (logged-in user)
 
+Request:
 {
   "event": "level_complete",      // Required: one of allowed event types
   "player": "username",            // Optional: defaults to current user
   "room_id": "room-abc123",        // Optional: for room-scoped events
-  "score": 1200,                   // Optional: numeric score value
-  "data": { "level": 3 }          // Optional: arbitrary event metadata
+  "score": 1200,                   // Optional: numeric score value (max: 999999999)
+  "data": { "level": 3 }          // Optional: arbitrary event metadata (max: 10000 chars)
 }
 
-Response:
+Success Response (200):
 {
   "success": true,
   "event_id": 123,
+  "event_type": "level_complete",
   "reward": "XP awarded, Points awarded",
-  "broadcast": true
+  "broadcast": true,
+  "rate_limit": {
+    "remaining_minute": 59,
+    "remaining_hour": 499
+  }
+}
+
+Error Responses:
+- 400: Invalid event data (validation failed)
+- 401: Not logged in
+- 403: Invalid nonce
+- 429: Rate limit exceeded
+- 500: Database error
+```
+
+#### 2. Health Check
+```
+GET /wp-json/gamify/v1/health
+Auth: Not required
+
+Response (200):
+{
+  "status": "ok",
+  "version": "0.1.0",
+  "timestamp": "2025-01-05 00:00:00",
+  "database": {
+    "connected": true,
+    "tables": {
+      "events": "exists",
+      "rooms": "exists"
+    }
+  },
+  "integrations": {
+    "gamipress": true,
+    "mycred": false
+  },
+  "features": {
+    "rate_limiting": true,
+    "validation": true
+  }
+}
+```
+
+#### 3. Rate Limit Status
+```
+GET /wp-json/gamify/v1/rate-limit
+Auth: Required (logged-in user)
+
+Response (200):
+{
+  "user_id": 1,
+  "status": {
+    "requests_this_minute": 5,
+    "requests_this_hour": 42,
+    "minute_limit": 60,
+    "hour_limit": 500,
+    "minute_remaining": 55,
+    "hour_remaining": 458
+  }
 }
 ```
 
 ### Event Types
-When adding new event types, update `WP_Gamify_Bridge_Endpoint::validate_event_type()` in `inc/class-gamify-endpoint.php:124`
+When adding new event types, update `WP_Gamify_Bridge_Event_Validator::$allowed_events` in `inc/class-event-validator.php:20`
+
+Alternatively, use the filter:
+```php
+add_filter( 'wp_gamify_bridge_allowed_events', function( $events ) {
+    $events[] = 'custom_event_type';
+    return $events;
+} );
+```
 
 ## Extension Points
 
 ### Action Hooks (for developers)
 - `wp_gamify_bridge_gamipress_event` - Fired when event should award GamiPress rewards
+  - Args: `$event_type`, `$user_id`, `$score`, `$data`
 - `wp_gamify_bridge_mycred_event` - Fired when event should award MyCred points
+  - Args: `$event_type`, `$user_id`, `$score`, `$data`
 - `wp_gamify_bridge_broadcast_event` - Fired when event should be broadcast to room (WebSocket integration point)
+  - Args: `$room_id`, `$event_type`, `$user_id`, `$response`
+- `wp_gamify_bridge_event_processed` 🆕 - Fired after successful event processing
+  - Args: `$log_id`, `$event_type`, `$user_id`, `$response`
 
-### Filters (none currently implemented)
-Consider adding filters for:
-- Event validation rules
-- Reward calculations
-- Rate limiting thresholds
+### Filters
+- `wp_gamify_bridge_allowed_events` 🆕 - Modify list of allowed event types
+  - Args: `$allowed_events` (array)
+  - Return: Modified array of allowed events
+- `wp_gamify_bridge_rate_limiting_enabled` 🆕 - Enable/disable rate limiting
+  - Args: `$enabled` (bool, default: true)
+  - Return: Boolean
+- `wp_gamify_bridge_rate_limit_whitelist` 🆕 - Whitelist users from rate limiting
+  - Args: `$whitelisted_users` (array of user IDs)
+  - Return: Modified array of user IDs
+
+### Security Considerations
+- All validation uses WP_Error for consistent error handling
+- Rate limiting uses transients (no permanent database pollution)
+- Nonce verification required for authenticated endpoints
+- SQL injection prevention via $wpdb->prepare()
+- Input sanitization on all user-provided data
+- Maximum limits prevent abuse (score, data size)
 
 ## Development Workflow
 

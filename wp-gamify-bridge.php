@@ -65,6 +65,8 @@ class WP_Gamify_Bridge {
 	private function includes() {
 		// Core classes.
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-database.php';
+		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-event-validator.php';
+		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-rate-limiter.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-gamify-endpoint.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-room-manager.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-script-enqueuer.php';

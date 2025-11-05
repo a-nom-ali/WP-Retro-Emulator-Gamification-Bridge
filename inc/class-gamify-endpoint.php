@@ -23,6 +23,20 @@ class WP_Gamify_Bridge_Endpoint {
 	private static $instance = null;
 
 	/**
+	 * Event validator instance.
+	 *
+	 * @var WP_Gamify_Bridge_Event_Validator
+	 */
+	private $validator;
+
+	/**
+	 * Rate limiter instance.
+	 *
+	 * @var WP_Gamify_Bridge_Rate_Limiter
+	 */
+	private $rate_limiter;
+
+	/**
 	 * Get the singleton instance.
 	 *
 	 * @return WP_Gamify_Bridge_Endpoint
@@ -38,6 +52,9 @@ class WP_Gamify_Bridge_Endpoint {
 	 * Constructor.
 	 */
 	private function __construct() {
+		$this->validator    = new WP_Gamify_Bridge_Event_Validator();
+		$this->rate_limiter = new WP_Gamify_Bridge_Rate_Limiter();
+
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 	}
 
@@ -45,6 +62,7 @@ class WP_Gamify_Bridge_Endpoint {
 	 * Register REST API routes.
 	 */
 	public function register_routes() {
+		// Event endpoint.
 		register_rest_route(
 			'gamify/v1',
 			'/event',
@@ -53,6 +71,28 @@ class WP_Gamify_Bridge_Endpoint {
 				'callback'            => array( $this, 'handle_event' ),
 				'permission_callback' => array( $this, 'check_permission' ),
 				'args'                => $this->get_event_args(),
+			)
+		);
+
+		// Health check endpoint.
+		register_rest_route(
+			'gamify/v1',
+			'/health',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'health_check' ),
+				'permission_callback' => '__return_true',
+			)
+		);
+
+		// Rate limit status endpoint.
+		register_rest_route(
+			'gamify/v1',
+			'/rate-limit',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_rate_limit_info' ),
+				'permission_callback' => array( $this, 'check_authenticated' ),
 			)
 		);
 	}
@@ -98,18 +138,37 @@ class WP_Gamify_Bridge_Endpoint {
 	 * Check permission for endpoint access.
 	 *
 	 * @param WP_REST_Request $request Request object.
-	 * @return bool True if user has permission.
+	 * @return bool|WP_Error True if user has permission, WP_Error otherwise.
 	 */
 	public function check_permission( $request ) {
 		// User must be logged in.
 		if ( ! is_user_logged_in() ) {
-			return false;
+			return new WP_Error(
+				'rest_forbidden',
+				__( 'You must be logged in to trigger events.', 'wp-gamify-bridge' ),
+				array( 'status' => 401 )
+			);
 		}
 
 		// Verify nonce if present.
 		$nonce = $request->get_header( 'X-WP-Nonce' );
 		if ( $nonce && ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
-			return false;
+			return new WP_Error(
+				'rest_forbidden',
+				__( 'Invalid security token.', 'wp-gamify-bridge' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		// Check rate limiting.
+		$user_id = get_current_user_id();
+
+		// Skip rate limiting for whitelisted users.
+		if ( ! $this->rate_limiter->is_whitelisted( $user_id ) ) {
+			$rate_check = $this->rate_limiter->check_rate_limit( $user_id );
+			if ( is_wp_error( $rate_check ) ) {
+				return $rate_check;
+			}
 		}
 
 		return true;
@@ -152,7 +211,7 @@ class WP_Gamify_Bridge_Endpoint {
 	 * Handle event POST request.
 	 *
 	 * @param WP_REST_Request $request Request object.
-	 * @return WP_REST_Response Response.
+	 * @return WP_REST_Response|WP_Error Response or error.
 	 */
 	public function handle_event( $request ) {
 		$event_type = $request->get_param( 'event' );
@@ -172,35 +231,64 @@ class WP_Gamify_Bridge_Endpoint {
 			}
 		}
 
+		// Validate complete event.
+		$validation_result = $this->validator->validate_event(
+			array(
+				'event'   => $event_type,
+				'user_id' => $user_id,
+				'room_id' => $room_id,
+				'score'   => $score,
+				'data'    => $data,
+			)
+		);
+
+		if ( is_wp_error( $validation_result ) ) {
+			return $validation_result;
+		}
+
+		// Increment rate limit counters.
+		if ( ! $this->rate_limiter->is_whitelisted( $user_id ) ) {
+			$this->rate_limiter->increment_counters( $user_id );
+		}
+
 		// Log event to database.
 		$db     = WP_Gamify_Bridge_Database::instance();
 		$log_id = $db->log_event( $event_type, $user_id, $room_id, $data, $score );
 
 		if ( ! $log_id ) {
-			return new WP_REST_Response(
-				array(
-					'success' => false,
-					'message' => __( 'Failed to log event', 'wp-gamify-bridge' ),
-				),
-				500
+			return new WP_Error(
+				'event_log_failed',
+				__( 'Failed to log event to database.', 'wp-gamify-bridge' ),
+				array( 'status' => 500 )
 			);
 		}
 
 		// Trigger gamification actions.
 		$reward = $this->trigger_gamification( $event_type, $user_id, $score, $data );
 
+		// Get rate limit status.
+		$rate_limit_status = $this->rate_limiter->get_rate_limit_status( $user_id );
+
 		// Prepare response.
 		$response = array(
-			'success'   => true,
-			'event_id'  => $log_id,
-			'reward'    => $reward,
-			'broadcast' => ! empty( $room_id ),
+			'success'    => true,
+			'event_id'   => $log_id,
+			'event_type' => $event_type,
+			'reward'     => $reward,
+			'broadcast'  => ! empty( $room_id ),
+			'rate_limit' => array(
+				'remaining_minute' => $rate_limit_status['minute_remaining'],
+				'remaining_hour'   => $rate_limit_status['hour_remaining'],
+			),
 		);
 
 		// Trigger action for broadcasting (can be used by WebSocket integration).
 		if ( ! empty( $room_id ) ) {
 			do_action( 'wp_gamify_bridge_broadcast_event', $room_id, $event_type, $user_id, $response );
 		}
+
+		// Log successful event processing.
+		do_action( 'wp_gamify_bridge_event_processed', $log_id, $event_type, $user_id, $response );
 
 		return new WP_REST_Response( $response, 200 );
 	}
@@ -233,5 +321,64 @@ class WP_Gamify_Bridge_Endpoint {
 		}
 
 		return $reward ?: 'Event logged';
+	}
+
+	/**
+	 * Health check endpoint.
+	 *
+	 * @return WP_REST_Response Health status response.
+	 */
+	public function health_check() {
+		global $wpdb;
+
+		$health_data = array(
+			'status'      => 'ok',
+			'version'     => WP_GAMIFY_BRIDGE_VERSION,
+			'timestamp'   => current_time( 'mysql' ),
+			'database'    => array(
+				'connected' => $wpdb->check_connection(),
+				'tables'    => array(
+					'events' => $wpdb->get_var( "SHOW TABLES LIKE '{$wpdb->prefix}gamify_events'" ) ? 'exists' : 'missing',
+					'rooms'  => $wpdb->get_var( "SHOW TABLES LIKE '{$wpdb->prefix}gamify_rooms'" ) ? 'exists' : 'missing',
+				),
+			),
+			'integrations' => array(
+				'gamipress' => class_exists( 'GamiPress' ),
+				'mycred'    => defined( 'MYCRED_VERSION' ),
+			),
+			'features'    => array(
+				'rate_limiting' => $this->rate_limiter->is_enabled(),
+				'validation'    => true,
+			),
+		);
+
+		return new WP_REST_Response( $health_data, 200 );
+	}
+
+	/**
+	 * Get rate limit info for current user.
+	 *
+	 * @return WP_REST_Response Rate limit status.
+	 */
+	public function get_rate_limit_info() {
+		$user_id = get_current_user_id();
+		$status  = $this->rate_limiter->get_rate_limit_status( $user_id );
+
+		return new WP_REST_Response(
+			array(
+				'user_id' => $user_id,
+				'status'  => $status,
+			),
+			200
+		);
+	}
+
+	/**
+	 * Check if user is authenticated (simpler permission check).
+	 *
+	 * @return bool True if authenticated.
+	 */
+	public function check_authenticated() {
+		return is_user_logged_in();
 	}
 }
