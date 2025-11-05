@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<phpunit
+	bootstrap="tests/bootstrap.php"
+	backupGlobals="false"
+	colors="true"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+	verbose="true"
+>
+	<testsuites>
+		<testsuite name="WP Gamify Bridge Test Suite">
+			<directory suffix="-test.php">./tests/</directory>
+		</testsuite>
+	</testsuites>
+	<coverage>
+		<include>
+			<directory suffix=".php">./inc</directory>
+			<directory suffix=".php">./admin</directory>
+		</include>
+		<exclude>
+			<directory>./vendor</directory>
+			<directory>./tests</directory>
+		</exclude>
+		<report>
+			<html outputDirectory="./tests/coverage" lowUpperBound="50" highLowerBound="80"/>
+			<text outputFile="php://stdout" showOnlySummary="true"/>
+		</report>
+	</coverage>
+	<php>
+		<const name="WP_TESTS_PHPUNIT_POLYFILLS_PATH" value="./vendor/yoast/phpunit-polyfills" />
+	</php>
+</phpunit>
