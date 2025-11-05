@@ -70,6 +70,7 @@ class WP_Gamify_Bridge {
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-gamify-endpoint.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-room-manager.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-room-endpoint.php';
+		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-emulator-manager.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-script-enqueuer.php';
 
 		// Admin classes.
@@ -106,6 +107,9 @@ class WP_Gamify_Bridge {
 
 		// Initialize room manager.
 		WP_Gamify_Bridge_Room_Manager::instance();
+
+		// Initialize emulator manager.
+		WP_Gamify_Bridge_Emulator_Manager::instance();
 
 		// Initialize script enqueuer.
 		WP_Gamify_Bridge_Script_Enqueuer::instance();
