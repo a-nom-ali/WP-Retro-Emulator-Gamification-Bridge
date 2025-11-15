@@ -20,6 +20,8 @@ yarn.lock
 # Composer
 vendor/
 composer.lock
+!js/vendor/
+!js/vendor/**
 
 # Build
 /build/
