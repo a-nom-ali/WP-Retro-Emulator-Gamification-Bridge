@@ -217,7 +217,7 @@ class WP_Gamify_Bridge_Post_Types {
 			'labels'              => $labels,
 			'supports'            => array( 'title', 'editor', 'thumbnail', 'author', 'custom-fields' ),
 			'hierarchical'        => false,
-			'public'              => false,
+			'public'              => true,
 			'show_ui'             => true,
 			'show_in_menu'        => 'gamify-bridge',
 			'menu_position'       => 40,
