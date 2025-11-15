@@ -270,6 +270,10 @@ The plugin uses an adapter pattern to support multiple emulator platforms. Each 
   - `$display_name` - Human-readable name
   - `$description` - Adapter description
   - `$supported_systems` - Array of supported systems
+  - `$supported_extensions` - Array of supported file extensions 🆕 (Phase 5)
+  - `$supports_save_state` - Boolean for save-state support 🆕 (Phase 5)
+  - `$control_mappings` - Array of control mappings 🆕 (Phase 5)
+  - `$setup_instructions` - String with setup instructions 🆕 (Phase 5)
   - `$js_detection` - JavaScript detection code
   - `$config` - Adapter configuration
 - **Abstract Methods**:
@@ -281,48 +285,77 @@ The plugin uses an adapter pattern to support multiple emulator platforms. Each 
   - `get_config_fields()` - Configuration form fields
   - `get_score_multiplier()` - Get score multiplier for this emulator
   - `apply_score_multiplier($event_data)` - Apply multiplier to scores
+  - `get_supported_extensions()` - Get supported file extensions 🆕 (Phase 5)
+  - `supports_save_state()` - Check if save-state supported 🆕 (Phase 5)
+  - `get_control_mappings()` - Get control mappings 🆕 (Phase 5)
+  - `get_setup_instructions()` - Get setup instructions 🆕 (Phase 5)
+  - `get_metadata()` - Get all adapter metadata (includes new fields) 🆕 (Phase 5)
 
 **Supported Emulators**:
 
 1. **JSNES** (`class-jsnes-adapter.php`) - NES
    - Systems: NES, Famicom
+   - File Extensions: .nes, .fds, .unif, .unf 🆕
+   - Save-State Support: Yes 🆕
    - Detection: `typeof window.JSNES !== 'undefined'`
    - Events: level_cleared, game_completed, high_score, player_died
    - Default score multiplier: 1.0
+   - Control Mappings: D-Pad (up/down/left/right), A/B buttons, Start, Select 🆕
+   - Setup: Auto-detects NES ROMs; Arrow keys for D-Pad, Z/X for B/A, Enter/Shift for Start/Select 🆕
 
 2. **jSNES** (`class-jsnes-snes-adapter.php`) - SNES
    - Systems: SNES, Super Famicom
+   - File Extensions: .smc, .sfc, .fig, .swc, .bs 🆕
+   - Save-State Support: Yes 🆕
    - Detection: `typeof window.jSNES !== 'undefined'`
    - Events: stage_complete, game_complete, boss_defeated, continue_used
    - Default score multiplier: 1.0
+   - Control Mappings: D-Pad, A/B/X/Y buttons, L/R shoulder buttons, Start, Select 🆕
+   - Setup: Auto-detects SNES ROMs; Arrow keys for D-Pad, Z/X/A/S for buttons, Q/W for L/R 🆕
 
 3. **GBA.js** (`class-gba-adapter.php`) - Game Boy Advance
    - Systems: GBA, Game Boy Advance
+   - File Extensions: .gba, .agb, .bin 🆕
+   - Save-State Support: Yes 🆕
    - Detection: `typeof window.GBA !== 'undefined'`
    - Events: level_complete, game_complete, checkpoint, player_ko, badge_earned
    - Default score multiplier: 1.0
+   - Control Mappings: D-Pad, A/B buttons, L/R shoulder buttons, Start, Select 🆕
+   - Setup: Auto-detects GBA ROMs; Arrow keys for D-Pad, Z/X for B/A, A/S for L/R 🆕
 
 4. **MAME.js** (`class-mame-adapter.php`) - Arcade
    - Systems: Arcade
+   - File Extensions: .zip, .7z 🆕
+   - Save-State Support: No (arcade authenticity) 🆕
    - Detection: `typeof window.MAME !== 'undefined' || typeof window.JSMAME !== 'undefined'`
    - Events: round_complete, game_over, high_score, coin_inserted, extra_life
    - Default score multiplier: 0.1 (arcade scores are typically very high)
+   - Control Mappings: Joystick (up/down/left/right), Buttons 1-3, Coin (5 key), Start (1 key) 🆕
+   - Setup: Accepts MAME ROM ZIPs; Arrow keys for joystick, Z/X/C for buttons, 5 for coin, 1 for start 🆕
 
 5. **RetroArch** (`class-retroarch-adapter.php`) - Multi-system
    - Systems: NES, SNES, Genesis, GBA, PlayStation, N64, Arcade, Multiple
+   - File Extensions: .nes, .smc, .sfc, .md, .gen, .gba, .iso, .cue, .bin, .z64, .n64, .v64, .zip 🆕
+   - Save-State Support: Yes 🆕
    - Detection: `typeof window.Module !== 'undefined' && window.Module.canvas`
    - Events: achievement_earned, level_beaten, game_finished, player_death
    - Core-to-system mapping for proper system detection
    - RetroAchievements support
    - Default score multiplier: 1.0
+   - Control Mappings: D-Pad, A/B/X/Y buttons, L/R/L2/R2 shoulder buttons, Start, Select 🆕
+   - Setup: Multi-system via cores; supports save states and RetroAchievements; customizable controls 🆕
 
 6. **EmulatorJS** (`class-emulatorjs-adapter.php`) - Web-based multi-system
    - Systems: NES, SNES, GBA, N64, Genesis, PlayStation, Atari, Multiple
+   - File Extensions: .nes, .smc, .sfc, .gba, .z64, .n64, .v64, .md, .gen, .bin, .iso, .a26, .a52, .a78, .zip 🆕
+   - Save-State Support: Yes 🆕
    - Detection: `typeof window.EJS_player !== 'undefined'`
    - Events: stage_cleared, game_completed, milestone, save_state
    - System auto-detection from EJS_core
    - Save state tracking option
    - Default score multiplier: 1.0
+   - Control Mappings: D-Pad/Joystick, A/B/X/Y buttons, L/R shoulder buttons, Start, Select 🆕
+   - Setup: Web-based multi-system with auto-detection; supports save states and customizable controls 🆕
 
 **Creating Custom Adapters**:
 
@@ -334,6 +367,14 @@ class My_Custom_Emulator_Adapter extends WP_Gamify_Bridge_Emulator_Adapter {
         $this->display_name = 'My Emulator';
         $this->description = 'Description of my emulator';
         $this->supported_systems = array('System Name');
+        $this->supported_extensions = array('rom', 'bin'); // 🆕 Phase 5
+        $this->supports_save_state = true; // 🆕 Phase 5
+        $this->control_mappings = array( // 🆕 Phase 5
+            'up' => __('Up', 'wp-gamify-bridge'),
+            'down' => __('Down', 'wp-gamify-bridge'),
+            'a' => __('A Button', 'wp-gamify-bridge'),
+        );
+        $this->setup_instructions = __('Instructions for setting up this emulator', 'wp-gamify-bridge'); // 🆕 Phase 5
         $this->js_detection = 'typeof window.MyEmulator !== \'undefined\'';
 
         $options = get_option('wp_gamify_bridge_emulators', array());

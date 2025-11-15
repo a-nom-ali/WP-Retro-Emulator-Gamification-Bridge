@@ -46,6 +46,34 @@ abstract class WP_Gamify_Bridge_Emulator_Adapter {
 	protected $supported_systems = array();
 
 	/**
+	 * Supported file extensions (e.g., 'nes', 'smc', 'gba').
+	 *
+	 * @var array
+	 */
+	protected $supported_extensions = array();
+
+	/**
+	 * Save-state support flag.
+	 *
+	 * @var bool
+	 */
+	protected $supports_save_state = false;
+
+	/**
+	 * Control mappings for this emulator.
+	 *
+	 * @var array
+	 */
+	protected $control_mappings = array();
+
+	/**
+	 * Setup instructions for this emulator.
+	 *
+	 * @var string
+	 */
+	protected $setup_instructions = '';
+
+	/**
 	 * JavaScript detection code.
 	 *
 	 * @var string
@@ -93,6 +121,42 @@ abstract class WP_Gamify_Bridge_Emulator_Adapter {
 	 */
 	public function get_supported_systems() {
 		return $this->supported_systems;
+	}
+
+	/**
+	 * Get supported file extensions.
+	 *
+	 * @return array
+	 */
+	public function get_supported_extensions() {
+		return $this->supported_extensions;
+	}
+
+	/**
+	 * Check if save-state is supported.
+	 *
+	 * @return bool
+	 */
+	public function supports_save_state() {
+		return $this->supports_save_state;
+	}
+
+	/**
+	 * Get control mappings.
+	 *
+	 * @return array
+	 */
+	public function get_control_mappings() {
+		return $this->control_mappings;
+	}
+
+	/**
+	 * Get setup instructions.
+	 *
+	 * @return string
+	 */
+	public function get_setup_instructions() {
+		return $this->setup_instructions;
 	}
 
 	/**
@@ -231,12 +295,17 @@ abstract class WP_Gamify_Bridge_Emulator_Adapter {
 	 */
 	public function get_metadata() {
 		return array(
-			'name'              => $this->get_name(),
-			'display_name'      => $this->get_display_name(),
-			'description'       => $this->get_description(),
-			'supported_systems' => $this->get_supported_systems(),
-			'enabled'           => $this->is_enabled(),
-			'config'            => $this->get_config(),
+			'name'                  => $this->get_name(),
+			'display_name'          => $this->get_display_name(),
+			'description'           => $this->get_description(),
+			'supported_systems'     => $this->get_supported_systems(),
+			'supported_extensions'  => $this->get_supported_extensions(),
+			'supports_save_state'   => $this->supports_save_state(),
+			'control_mappings'      => $this->get_control_mappings(),
+			'setup_instructions'    => $this->get_setup_instructions(),
+			'score_multiplier'      => $this->get_score_multiplier(),
+			'enabled'               => $this->is_enabled(),
+			'config'                => $this->get_config(),
 		);
 	}
 }

@@ -21,11 +21,30 @@ class WP_Gamify_Bridge_RetroArch_Adapter extends WP_Gamify_Bridge_Emulator_Adapt
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->name             = 'retroarch';
-		$this->display_name     = 'RetroArch';
-		$this->description      = __( 'Multi-system emulator frontend - Supports multiple retro gaming systems via cores', 'wp-gamify-bridge' );
-		$this->supported_systems = array( 'NES', 'SNES', 'Genesis', 'GBA', 'PlayStation', 'N64', 'Arcade', 'Multiple' );
-		$this->js_detection     = 'typeof window.Module !== \'undefined\' && window.Module.canvas';
+		$this->name                = 'retroarch';
+		$this->display_name        = 'RetroArch';
+		$this->description         = __( 'Multi-system emulator frontend - Supports multiple retro gaming systems via cores', 'wp-gamify-bridge' );
+		$this->supported_systems   = array( 'NES', 'SNES', 'Genesis', 'GBA', 'PlayStation', 'N64', 'Arcade', 'Multiple' );
+		$this->supported_extensions = array( 'nes', 'smc', 'sfc', 'md', 'gen', 'gba', 'iso', 'cue', 'bin', 'z64', 'n64', 'v64', 'zip' );
+		$this->supports_save_state = true;
+		$this->control_mappings    = array(
+			'up'      => __( 'D-Pad Up', 'wp-gamify-bridge' ),
+			'down'    => __( 'D-Pad Down', 'wp-gamify-bridge' ),
+			'left'    => __( 'D-Pad Left', 'wp-gamify-bridge' ),
+			'right'   => __( 'D-Pad Right', 'wp-gamify-bridge' ),
+			'a'       => __( 'A Button', 'wp-gamify-bridge' ),
+			'b'       => __( 'B Button', 'wp-gamify-bridge' ),
+			'x'       => __( 'X Button', 'wp-gamify-bridge' ),
+			'y'       => __( 'Y Button', 'wp-gamify-bridge' ),
+			'l'       => __( 'L Button', 'wp-gamify-bridge' ),
+			'r'       => __( 'R Button', 'wp-gamify-bridge' ),
+			'l2'      => __( 'L2 Button', 'wp-gamify-bridge' ),
+			'r2'      => __( 'R2 Button', 'wp-gamify-bridge' ),
+			'start'   => __( 'Start Button', 'wp-gamify-bridge' ),
+			'select'  => __( 'Select Button', 'wp-gamify-bridge' ),
+		);
+		$this->setup_instructions  = __( 'RetroArch is a multi-system emulator that uses "cores" to emulate different systems. Upload a ROM file compatible with your selected core. RetroArch supports save states, RetroAchievements, and customizable controls. Default keyboard: Arrow keys for D-Pad, Z/X for B/A, A/S for Y/X, Q/W for L/R, Enter for Start, Shift for Select.', 'wp-gamify-bridge' );
+		$this->js_detection        = 'typeof window.Module !== \'undefined\' && window.Module.canvas';
 
 		$options      = get_option( 'wp_gamify_bridge_emulators', array() );
 		$this->config = isset( $options['retroarch'] ) ? $options['retroarch'] : $this->get_default_config();

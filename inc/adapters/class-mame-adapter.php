@@ -21,11 +21,25 @@ class WP_Gamify_Bridge_MAME_Adapter extends WP_Gamify_Bridge_Emulator_Adapter {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->name             = 'mame';
-		$this->display_name     = 'MAME.js';
-		$this->description      = __( 'JavaScript Arcade Emulator - Supports classic arcade games', 'wp-gamify-bridge' );
-		$this->supported_systems = array( 'Arcade' );
-		$this->js_detection     = 'typeof window.MAME !== \'undefined\' || typeof window.JSMAME !== \'undefined\'';
+		$this->name                = 'mame';
+		$this->display_name        = 'MAME.js';
+		$this->description         = __( 'JavaScript Arcade Emulator - Supports classic arcade games', 'wp-gamify-bridge' );
+		$this->supported_systems   = array( 'Arcade' );
+		$this->supported_extensions = array( 'zip', '7z' );
+		$this->supports_save_state = false;
+		$this->control_mappings    = array(
+			'up'      => __( 'Joystick Up', 'wp-gamify-bridge' ),
+			'down'    => __( 'Joystick Down', 'wp-gamify-bridge' ),
+			'left'    => __( 'Joystick Left', 'wp-gamify-bridge' ),
+			'right'   => __( 'Joystick Right', 'wp-gamify-bridge' ),
+			'button1' => __( 'Button 1', 'wp-gamify-bridge' ),
+			'button2' => __( 'Button 2', 'wp-gamify-bridge' ),
+			'button3' => __( 'Button 3', 'wp-gamify-bridge' ),
+			'coin'    => __( 'Insert Coin (5 key)', 'wp-gamify-bridge' ),
+			'start'   => __( 'Start (1 key)', 'wp-gamify-bridge' ),
+		);
+		$this->setup_instructions  = __( 'MAME.js runs arcade ROM files (typically .zip format). Upload a compatible MAME ROM and the emulator will handle it. Use arrow keys for joystick, Z/X/C for buttons, 5 for coin, and 1 for start. Note: Arcade scores are typically very high, so a default 0.1x multiplier is applied.', 'wp-gamify-bridge' );
+		$this->js_detection        = 'typeof window.MAME !== \'undefined\' || typeof window.JSMAME !== \'undefined\'';
 
 		$options      = get_option( 'wp_gamify_bridge_emulators', array() );
 		$this->config = isset( $options['mame'] ) ? $options['mame'] : $this->get_default_config();

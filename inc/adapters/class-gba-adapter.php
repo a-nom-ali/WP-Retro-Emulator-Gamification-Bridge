@@ -21,11 +21,26 @@ class WP_Gamify_Bridge_GBA_Adapter extends WP_Gamify_Bridge_Emulator_Adapter {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->name             = 'gba';
-		$this->display_name     = 'GBA.js';
-		$this->description      = __( 'JavaScript Game Boy Advance Emulator - Supports GBA games', 'wp-gamify-bridge' );
-		$this->supported_systems = array( 'GBA', 'Game Boy Advance' );
-		$this->js_detection     = 'typeof window.GBA !== \'undefined\'';
+		$this->name                = 'gba';
+		$this->display_name        = 'GBA.js';
+		$this->description         = __( 'JavaScript Game Boy Advance Emulator - Supports GBA games', 'wp-gamify-bridge' );
+		$this->supported_systems   = array( 'GBA', 'Game Boy Advance' );
+		$this->supported_extensions = array( 'gba', 'agb', 'bin' );
+		$this->supports_save_state = true;
+		$this->control_mappings    = array(
+			'up'     => __( 'D-Pad Up', 'wp-gamify-bridge' ),
+			'down'   => __( 'D-Pad Down', 'wp-gamify-bridge' ),
+			'left'   => __( 'D-Pad Left', 'wp-gamify-bridge' ),
+			'right'  => __( 'D-Pad Right', 'wp-gamify-bridge' ),
+			'a'      => __( 'A Button', 'wp-gamify-bridge' ),
+			'b'      => __( 'B Button', 'wp-gamify-bridge' ),
+			'l'      => __( 'L Button', 'wp-gamify-bridge' ),
+			'r'      => __( 'R Button', 'wp-gamify-bridge' ),
+			'start'  => __( 'Start Button', 'wp-gamify-bridge' ),
+			'select' => __( 'Select Button', 'wp-gamify-bridge' ),
+		);
+		$this->setup_instructions  = __( 'GBA.js automatically detects and runs Game Boy Advance ROM files. Upload a .gba file and the emulator will handle the rest. Use arrow keys for D-Pad, Z for B, X for A, A for L, S for R, Enter for Start, and Shift for Select.', 'wp-gamify-bridge' );
+		$this->js_detection        = 'typeof window.GBA !== \'undefined\'';
 
 		$options      = get_option( 'wp_gamify_bridge_emulators', array() );
 		$this->config = isset( $options['gba'] ) ? $options['gba'] : $this->get_default_config();

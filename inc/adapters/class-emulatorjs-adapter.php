@@ -21,11 +21,28 @@ class WP_Gamify_Bridge_EmulatorJS_Adapter extends WP_Gamify_Bridge_Emulator_Adap
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->name             = 'emulatorjs';
-		$this->display_name     = 'EmulatorJS';
-		$this->description      = __( 'Web-based multi-system emulator - Supports NES, SNES, GBA, N64, and more', 'wp-gamify-bridge' );
-		$this->supported_systems = array( 'NES', 'SNES', 'GBA', 'N64', 'Genesis', 'PlayStation', 'Atari', 'Multiple' );
-		$this->js_detection     = 'typeof window.EJS_player !== \'undefined\'';
+		$this->name                = 'emulatorjs';
+		$this->display_name        = 'EmulatorJS';
+		$this->description         = __( 'Web-based multi-system emulator - Supports NES, SNES, GBA, N64, and more', 'wp-gamify-bridge' );
+		$this->supported_systems   = array( 'NES', 'SNES', 'GBA', 'N64', 'Genesis', 'PlayStation', 'Atari', 'Multiple' );
+		$this->supported_extensions = array( 'nes', 'smc', 'sfc', 'gba', 'z64', 'n64', 'v64', 'md', 'gen', 'bin', 'iso', 'a26', 'a52', 'a78', 'zip' );
+		$this->supports_save_state = true;
+		$this->control_mappings    = array(
+			'up'      => __( 'D-Pad Up / Joystick Up', 'wp-gamify-bridge' ),
+			'down'    => __( 'D-Pad Down / Joystick Down', 'wp-gamify-bridge' ),
+			'left'    => __( 'D-Pad Left / Joystick Left', 'wp-gamify-bridge' ),
+			'right'   => __( 'D-Pad Right / Joystick Right', 'wp-gamify-bridge' ),
+			'a'       => __( 'A Button', 'wp-gamify-bridge' ),
+			'b'       => __( 'B Button', 'wp-gamify-bridge' ),
+			'x'       => __( 'X Button', 'wp-gamify-bridge' ),
+			'y'       => __( 'Y Button', 'wp-gamify-bridge' ),
+			'l'       => __( 'L Button', 'wp-gamify-bridge' ),
+			'r'       => __( 'R Button', 'wp-gamify-bridge' ),
+			'start'   => __( 'Start Button', 'wp-gamify-bridge' ),
+			'select'  => __( 'Select Button', 'wp-gamify-bridge' ),
+		);
+		$this->setup_instructions  = __( 'EmulatorJS is a web-based multi-system emulator. Upload a ROM file for NES, SNES, GBA, N64, Genesis, PlayStation, or Atari. The system will be auto-detected based on the core. EmulatorJS supports save states and customizable controls. Default controls: Arrow keys for D-Pad, Z/X for B/A, A/S for Y/X, Q/W for L/R, Enter for Start, Shift for Select.', 'wp-gamify-bridge' );
+		$this->js_detection        = 'typeof window.EJS_player !== \'undefined\'';
 
 		$options      = get_option( 'wp_gamify_bridge_emulators', array() );
 		$this->config = isset( $options['emulatorjs'] ) ? $options['emulatorjs'] : $this->get_default_config();

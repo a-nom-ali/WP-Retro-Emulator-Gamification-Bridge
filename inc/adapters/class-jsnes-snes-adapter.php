@@ -21,11 +21,28 @@ class WP_Gamify_Bridge_JSNES_SNES_Adapter extends WP_Gamify_Bridge_Emulator_Adap
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->name             = 'jsnes_snes';
-		$this->display_name     = 'jSNES';
-		$this->description      = __( 'JavaScript SNES Emulator - Supports Super Nintendo Entertainment System games', 'wp-gamify-bridge' );
-		$this->supported_systems = array( 'SNES', 'Super Famicom' );
-		$this->js_detection     = 'typeof window.jSNES !== \'undefined\'';
+		$this->name                = 'jsnes_snes';
+		$this->display_name        = 'jSNES';
+		$this->description         = __( 'JavaScript SNES Emulator - Supports Super Nintendo Entertainment System games', 'wp-gamify-bridge' );
+		$this->supported_systems   = array( 'SNES', 'Super Famicom' );
+		$this->supported_extensions = array( 'smc', 'sfc', 'fig', 'swc', 'bs' );
+		$this->supports_save_state = true;
+		$this->control_mappings    = array(
+			'up'     => __( 'D-Pad Up', 'wp-gamify-bridge' ),
+			'down'   => __( 'D-Pad Down', 'wp-gamify-bridge' ),
+			'left'   => __( 'D-Pad Left', 'wp-gamify-bridge' ),
+			'right'  => __( 'D-Pad Right', 'wp-gamify-bridge' ),
+			'a'      => __( 'A Button', 'wp-gamify-bridge' ),
+			'b'      => __( 'B Button', 'wp-gamify-bridge' ),
+			'x'      => __( 'X Button', 'wp-gamify-bridge' ),
+			'y'      => __( 'Y Button', 'wp-gamify-bridge' ),
+			'l'      => __( 'L Button', 'wp-gamify-bridge' ),
+			'r'      => __( 'R Button', 'wp-gamify-bridge' ),
+			'start'  => __( 'Start Button', 'wp-gamify-bridge' ),
+			'select' => __( 'Select Button', 'wp-gamify-bridge' ),
+		);
+		$this->setup_instructions  = __( 'jSNES automatically detects and runs SNES ROM files. Upload a .smc or .sfc file and the emulator will handle the rest. Use arrow keys for D-Pad, Z/X for B/A, A/S for Y/X, Q/W for L/R, Enter for Start, and Shift for Select.', 'wp-gamify-bridge' );
+		$this->js_detection        = 'typeof window.jSNES !== \'undefined\'';
 
 		$options      = get_option( 'wp_gamify_bridge_emulators', array() );
 		$this->config = isset( $options['jsnes_snes'] ) ? $options['jsnes_snes'] : $this->get_default_config();

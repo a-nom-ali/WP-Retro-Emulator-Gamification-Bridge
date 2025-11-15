@@ -21,11 +21,24 @@ class WP_Gamify_Bridge_JSNES_Adapter extends WP_Gamify_Bridge_Emulator_Adapter {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->name             = 'jsnes';
-		$this->display_name     = 'JSNES';
-		$this->description      = __( 'JavaScript NES Emulator - Supports Nintendo Entertainment System games', 'wp-gamify-bridge' );
-		$this->supported_systems = array( 'NES', 'Famicom' );
-		$this->js_detection     = 'typeof window.JSNES !== \'undefined\'';
+		$this->name                = 'jsnes';
+		$this->display_name        = 'JSNES';
+		$this->description         = __( 'JavaScript NES Emulator - Supports Nintendo Entertainment System games', 'wp-gamify-bridge' );
+		$this->supported_systems   = array( 'NES', 'Famicom' );
+		$this->supported_extensions = array( 'nes', 'fds', 'unif', 'unf' );
+		$this->supports_save_state = true;
+		$this->control_mappings    = array(
+			'up'     => __( 'D-Pad Up', 'wp-gamify-bridge' ),
+			'down'   => __( 'D-Pad Down', 'wp-gamify-bridge' ),
+			'left'   => __( 'D-Pad Left', 'wp-gamify-bridge' ),
+			'right'  => __( 'D-Pad Right', 'wp-gamify-bridge' ),
+			'a'      => __( 'A Button', 'wp-gamify-bridge' ),
+			'b'      => __( 'B Button', 'wp-gamify-bridge' ),
+			'start'  => __( 'Start Button', 'wp-gamify-bridge' ),
+			'select' => __( 'Select Button', 'wp-gamify-bridge' ),
+		);
+		$this->setup_instructions  = __( 'JSNES automatically detects and runs NES ROM files. Upload a .nes file and the emulator will handle the rest. Use arrow keys for D-Pad, Z for B button, X for A button, Enter for Start, and Shift for Select.', 'wp-gamify-bridge' );
+		$this->js_detection        = 'typeof window.JSNES !== \'undefined\'';
 
 		// Load configuration from options.
 		$options      = get_option( 'wp_gamify_bridge_emulators', array() );
