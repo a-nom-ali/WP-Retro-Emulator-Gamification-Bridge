@@ -93,14 +93,37 @@ A focused plan for folding the legacy **Retro Game Emulator** plugin into WP Ret
 
 ---
 
-## Phase 6 — Release & Legacy Removal
+## Phase 6 — Release & Legacy Removal ✅ (COMPLETE)
 **Objective:** Ship the integrated experience and delete the redundant plugin folder.
-- ✅ README/AGENTS/ROADMAP partially updated; continue syncing docs as phases complete.
-- ⏳ TODO: Complete ROM migration (including attachments), verify `[nes]` shims across content, remove `/retro-game-emulator`, and publish migration/release notes.
+- ✅ README/AGENTS/ROADMAP updated with Phase 6 completion markers.
+- ✅ **ROM Migration Script Enhanced:** Updated `migrate-legacy-roms.php` to use Phase 2 upload infrastructure:
+  - Creates WordPress attachments for each ROM file (Media Library integration)
+  - Stores attachment ID instead of relative path
+  - Auto-extracts MD5 checksum and file size
+  - Checksum-based duplicate detection
+  - Atomic operations (rollback on failure)
+  - Enhanced UI with detailed progress feedback
+- ✅ **[nes] Shortcode Compatibility Verified:** Legacy shortcode works via `class-emulator-shortcode.php`:
+  - Delegates to `[retro_emulator]` with `legacy_notice` flag
+  - Displays migration notice to users
+  - Maintains backward compatibility for existing content
+- ✅ **Migration Documentation Created:**
+  - `MIGRATION.md` - Complete migration guide with troubleshooting
+  - `RELEASE-NOTES.md` - v0.1.0 release notes with feature overview
+  - Pre-migration checklist and step-by-step instructions
+  - Rollback plan and support resources
+- ✅ **Legacy Plugin Folder Removed:** `/retro-game-emulator` deleted from codebase
+  - ROM files in `/wp-content/uploads/retro-game-emulator/` remain for manual migration
+  - Users instructed to keep files as backup for 30 days post-migration
 
-**Deliverables:**
-- Final PR removing the folder.
-- Communication plan/migration guide for downstream sites.
+**Deliverables Completed:**
+- ✅ Enhanced migration script with attachment support
+- ✅ Migration guide and release notes
+- ✅ Legacy shortcode compatibility verified
+- ✅ Legacy plugin folder removed
+- ✅ Phase 6 documentation complete
+
+**Status:** Integration complete. Plugin ready for v1.0 release after Phase 9 testing.
 
 ---
 
