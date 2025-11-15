@@ -62,19 +62,48 @@ class WP_Gamify_Bridge_Script_Enqueuer {
 			true
 		);
 
-		// Localize script with data.
+		$roms = array();
+		if ( class_exists( 'WP_Gamify_Bridge_Rom_Library_Service' ) ) {
+			$roms = WP_Gamify_Bridge_Rom_Library_Service::get_list(
+				array(
+					'posts_per_page' => 100,
+				)
+			);
+		}
+
 		wp_localize_script(
 			'wp-gamify-emulator-hooks',
 			'wpGamifyBridge',
 			array(
 				'apiUrl'   => rest_url( 'gamify/v1/event' ),
+				'romsApi'  => rest_url( 'gamify/v1/roms' ),
 				'nonce'    => wp_create_nonce( 'wp_rest' ),
 				'userId'   => get_current_user_id(),
 				'userName' => wp_get_current_user()->user_login,
 				'roomId'   => $this->get_current_room_id(),
 				'debug'    => defined( 'WP_DEBUG' ) && WP_DEBUG,
+				'roms'     => $roms,
 			)
 		);
+
+		if ( $this->is_emulator_page() ) {
+			wp_enqueue_style( 'dashicons' );
+			wp_enqueue_script(
+				'wp-gamify-jsnes',
+				WP_GAMIFY_BRIDGE_PLUGIN_URL . 'js/vendor/jsnes.min.js',
+				array(),
+				'1.2.0',
+				true
+			);
+
+			wp_enqueue_script(
+				'wp-gamify-retro-player',
+				WP_GAMIFY_BRIDGE_PLUGIN_URL . 'js/retro-emulator-player.js',
+				array( 'wp-gamify-jsnes', 'wp-gamify-emulator-hooks' ),
+				WP_GAMIFY_BRIDGE_VERSION,
+				true
+			);
+		}
 	}
 
 	/**
@@ -95,5 +124,20 @@ class WP_Gamify_Bridge_Script_Enqueuer {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Determine if current page contains the emulator shortcode.
+	 *
+	 * @return bool
+	 */
+	private function is_emulator_page() {
+		global $post;
+
+		if ( ! $post ) {
+			return false;
+		}
+
+		return has_shortcode( $post->post_content, 'retro_emulator' ) || has_shortcode( $post->post_content, 'nes' );
 	}
 }
