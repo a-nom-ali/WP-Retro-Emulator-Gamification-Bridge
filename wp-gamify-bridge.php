@@ -71,13 +71,18 @@ class WP_Gamify_Bridge {
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-gamify-endpoint.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-room-manager.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-room-endpoint.php';
+		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-rom-library-service.php';
+		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-rom-library-endpoint.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-emulator-manager.php';
+		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-emulator-shortcode.php';
+		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-blocks.php';
 		require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'inc/class-script-enqueuer.php';
 
 		// Admin classes.
 		if ( is_admin() ) {
 			require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'admin/class-admin-page.php';
 			require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'admin/class-dashboard.php';
+			require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'admin/class-rom-library.php';
 		}
 
 		// Integration classes.
@@ -108,6 +113,7 @@ class WP_Gamify_Bridge {
 		// Initialize REST API.
 		WP_Gamify_Bridge_Endpoint::instance();
 		WP_Gamify_Bridge_Room_Endpoint::instance();
+		WP_Gamify_Bridge_Rom_Library_Endpoint::instance();
 
 		// Initialize room manager.
 		WP_Gamify_Bridge_Room_Manager::instance();
@@ -115,13 +121,20 @@ class WP_Gamify_Bridge {
 		// Initialize emulator manager.
 		WP_Gamify_Bridge_Emulator_Manager::instance();
 
+		// Register block(s).
+		WP_Gamify_Bridge_Blocks::instance();
+
 		// Initialize script enqueuer.
 		WP_Gamify_Bridge_Script_Enqueuer::instance();
+
+		// Shortcodes.
+		WP_Gamify_Bridge_Emulator_Shortcode::instance();
 
 		// Initialize admin page.
 		if ( is_admin() ) {
 			WP_Gamify_Bridge_Admin_Page::instance();
 			WP_Gamify_Bridge_Dashboard::instance();
+			WP_Gamify_Bridge_Rom_Library::instance();
 		}
 
 		// Initialize integrations.
