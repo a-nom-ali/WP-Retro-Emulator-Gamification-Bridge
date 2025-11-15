@@ -99,6 +99,45 @@ function wp_gamify_bridge_human_bytes( $bytes ) {
 	return round( $bytes, 2 ) . ' ' . $units[ $pow - 1 ];
 }
 
+/**
+ * Create WordPress attachment from ROM file.
+ *
+ * @param string $file_path Full path to ROM file.
+ * @param string $title Post title for attachment.
+ * @return int|WP_Error Attachment ID or error.
+ */
+function wp_gamify_bridge_create_attachment( $file_path, $title ) {
+	if ( ! file_exists( $file_path ) ) {
+		return new WP_Error( 'file_not_found', 'File not found: ' . $file_path );
+	}
+
+	// Get file type.
+	$filetype = wp_check_filetype( basename( $file_path ), null );
+
+	// Prepare attachment data.
+	$attachment = array(
+		'guid'           => wp_upload_dir()['url'] . '/' . basename( $file_path ),
+		'post_mime_type' => $filetype['type'] ? $filetype['type'] : 'application/octet-stream',
+		'post_title'     => $title,
+		'post_content'   => '',
+		'post_status'    => 'inherit',
+	);
+
+	// Insert attachment.
+	$attach_id = wp_insert_attachment( $attachment, $file_path );
+
+	if ( is_wp_error( $attach_id ) ) {
+		return $attach_id;
+	}
+
+	// Generate metadata.
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	$attach_data = wp_generate_attachment_metadata( $attach_id, $file_path );
+	wp_update_attachment_metadata( $attach_id, $attach_data );
+
+	return $attach_id;
+}
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -121,8 +160,13 @@ function wp_gamify_bridge_human_bytes( $bytes ) {
 	</style>
 </head>
 <body>
-	<h1>Legacy ROM Migration</h1>
-	<p>Scans <code><?php echo esc_html( $legacy_path ); ?></code> for ROM files and creates <strong>retro_rom</strong> posts with metadata.</p>
+	<h1>Legacy ROM Migration (Enhanced)</h1>
+	<p>Scans <code><?php echo esc_html( $legacy_path ); ?></code> for ROM files and creates:</p>
+	<ul>
+		<li><strong>WordPress Attachments</strong> for each ROM file (proper Media Library integration)</li>
+		<li><strong>retro_rom</strong> posts with full metadata (adapter, checksum, file size, taxonomies)</li>
+	</ul>
+	<p><em>Uses the new upload infrastructure from Phase 2 for proper attachment handling.</em></p>
 
 	<?php
 	if ( ! is_dir( $legacy_path ) ) {
@@ -158,20 +202,20 @@ function wp_gamify_bridge_human_bytes( $bytes ) {
 			continue;
 		}
 
-			$relative_path = 'retro-game-emulator/' . basename( $file );
-
+			// Check if ROM already exists by checking for matching checksum.
+			$checksum = md5_file( $file );
 			$existing = get_posts(
 				array(
 					'post_type'  => 'retro_rom',
-					'meta_key'   => '_retro_rom_source',
-					'meta_value' => $relative_path,
+					'meta_key'   => '_retro_rom_checksum',
+					'meta_value' => $checksum,
 					'fields'     => 'ids',
 					'numberposts'=> 1,
 				)
 			);
 
 			if ( ! empty( $existing ) ) {
-				$skipped[] = basename( $file ) . ' (already imported)';
+				$skipped[] = basename( $file ) . ' (already imported - matching checksum)';
 				continue;
 			}
 
@@ -196,8 +240,20 @@ function wp_gamify_bridge_human_bytes( $bytes ) {
 		$adapter = $config['adapter'];
 		$systems = isset( $config['systems'] ) ? (array) $config['systems'] : array();
 
+		// Create WordPress attachment for ROM file.
+		$attachment_id = wp_gamify_bridge_create_attachment( $file, $title );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			$errors[] = basename( $file ) . ': ' . $attachment_id->get_error_message();
+			wp_delete_post( $post_id, true );
+			continue;
+		}
+
+		// Store adapter and attachment ID.
 		update_post_meta( $post_id, '_retro_rom_adapter', $adapter );
-		update_post_meta( $post_id, '_retro_rom_source', $relative_path );
+		update_post_meta( $post_id, '_retro_rom_source', $attachment_id );
+
+		// Auto-extract metadata (checksum, file size).
 		update_post_meta( $post_id, '_retro_rom_file_size', filesize( $file ) );
 		update_post_meta( $post_id, '_retro_rom_checksum', md5_file( $file ) );
 
@@ -245,7 +301,14 @@ function wp_gamify_bridge_human_bytes( $bytes ) {
 		echo '<li>Back up your database (<code>wp db export</code>).</li>';
 		echo '<li>Ensure files exist under <code>' . esc_html( $legacy_path ) . '</code>.</li>';
 		echo '<li>Supported extensions today: ' . implode( ', ', array_keys( $supported_extensions ) ) . '.</li>';
-		echo '<li>Each file becomes a <code>retro_rom</code> post with default adapter mapping.</li>';
+		echo '<li>Each file will create:';
+		echo '<ul>';
+		echo '<li>A WordPress <strong>attachment</strong> (Media Library entry)</li>';
+		echo '<li>A <code>retro_rom</code> post with adapter, checksum, file size</li>';
+		echo '<li>Taxonomy terms for system, difficulty, multiplayer mode</li>';
+		echo '</ul>';
+		echo '</li>';
+		echo '<li>Duplicate detection: ROMs with matching MD5 checksums will be skipped.</li>';
 		echo '</ol>';
 		echo '</div>';
 
