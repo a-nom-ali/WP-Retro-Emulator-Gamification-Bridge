@@ -21,6 +21,16 @@
         config: window.wpGamifyBridge || {},
 
         /**
+         * ROM library provided by WordPress.
+         */
+        availableRoms: [],
+
+        /**
+         * Currently selected ROM metadata.
+         */
+        activeRom: null,
+
+        /**
          * Event queue for failed requests.
          */
         eventQueue: [],
@@ -63,7 +73,12 @@
          * Initialize the bridge.
          */
         init: function() {
-            this.log('info', 'Initializing WP Gamify Bridge', this.config);
+            this.availableRoms = Array.isArray(this.config.roms) ? this.config.roms : [];
+            this.log('info', 'Initializing WP Gamify Bridge', {
+                user: this.config.userName,
+                roomId: this.config.roomId,
+                romCount: this.availableRoms.length
+            });
 
             // Setup network monitoring
             this.setupNetworkMonitoring();
@@ -78,6 +93,22 @@
             setInterval(this.processQueue.bind(this), 5000);
 
             this.log('success', 'WP Gamify Bridge initialized');
+        },
+
+        /**
+         * Get ROM metadata by ID.
+         *
+         * @param {number} romId
+         * @returns {object|null}
+         */
+        getRomById: function(romId) {
+            if (!romId || !this.availableRoms.length) {
+                return null;
+            }
+
+            return this.availableRoms.find(function(rom) {
+                return parseInt(rom.id, 10) === parseInt(romId, 10);
+            }) || null;
         },
 
         /**
@@ -205,6 +236,11 @@
         triggerEvent: function(eventType, eventData, options) {
             eventData = eventData || {};
             options = options || {};
+
+            if (this.activeRom && typeof eventData === 'object') {
+                eventData.rom = Object.assign({}, this.activeRom);
+                eventData.emulator = this.activeRom.adapter || this.emulatorType;
+            }
 
             const payload = {
                 event: eventType,
