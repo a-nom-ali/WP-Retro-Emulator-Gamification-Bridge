@@ -83,6 +83,7 @@ class WP_Gamify_Bridge {
 			require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'admin/class-admin-page.php';
 			require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'admin/class-dashboard.php';
 			require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'admin/class-rom-library.php';
+			require_once WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'admin/class-rom-library-admin.php';
 		}
 
 		// Integration classes.
@@ -135,6 +136,7 @@ class WP_Gamify_Bridge {
 			WP_Gamify_Bridge_Admin_Page::instance();
 			WP_Gamify_Bridge_Dashboard::instance();
 			WP_Gamify_Bridge_Rom_Library::instance();
+			WP_Gamify_Bridge_ROM_Library_Admin::instance();
 		}
 
 		// Initialize integrations.

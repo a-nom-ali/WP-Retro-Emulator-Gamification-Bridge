@@ -297,6 +297,79 @@ composer run test
   - **Security**: Nonce verification (`retro_rom_meta_nonce`) and capability checks on save
   - **Data Handling**: JSON fields support both string and array values with automatic decoding
 
+- **WP_Gamify_Bridge_ROM_Library_Admin** (`admin/class-rom-library-admin.php`) 🆕 Created in Phase 3
+  - **Lines**: 880+
+  - **Purpose**: Dedicated admin page for ROM management with list table, bulk actions, and advanced features
+  - **Two Classes**:
+    - `WP_Gamify_Bridge_ROM_List_Table` extends `WP_List_Table` for professional admin table
+    - `WP_Gamify_Bridge_ROM_Library_Admin` manages the admin page
+  - **Menu Integration**: Submenu under "Gamify Bridge" → "ROM Library"
+  - **List Table Features**:
+    - **Columns**: Checkbox, Thumbnail (emoji icons), Title, Adapter, System, File Size, Status, Date Added
+    - **Sortable Columns**: Title, Adapter, File Size, Date (default: date DESC)
+    - **Row Actions**: Edit (opens ROM edit screen), Delete (with confirmation), View/Preview
+    - **Pagination**: 20 per page (configurable via screen options: `per_page` option)
+    - **Filtering**: Dropdown filters for adapter and system taxonomy
+    - **Empty State**: "No ROMs found. Upload your first ROM to get started!"
+  - **Bulk Actions** (`get_bulk_actions()`):
+    - `delete` - Permanently delete selected ROMs
+    - `publish` - Set status to published (publicly available)
+    - `draft` - Set status to draft (hidden from public)
+    - `change_adapter` - Opens modal to select new adapter for multiple ROMs
+  - **Drag-and-Drop Uploader** (`render_drag_drop_uploader()`):
+    - Visual upload area at top of page (dashed border, gray background)
+    - WordPress Media Library integration via `wp.media()`
+    - Drag-and-drop visual feedback (border color change on dragover)
+    - Click-to-browse alternative
+    - Multiple file upload support
+    - Shows supported formats and size limit (32 formats, 10MB max)
+    - Auto-refresh page after upload
+  - **Contextual Help Tabs** (`add_contextual_help()`):
+    - **Overview**: General description of ROM Library features
+    - **Uploading ROMs**: Supported formats, file size limits, drag-and-drop instructions
+    - **Bulk Actions**: Detailed explanation of each bulk action
+    - **Migration**: Step-by-step migration guide from legacy plugin with link to MIGRATION.md
+    - **Help Sidebar**: Quick links to Edit ROMs (standard view) and Plugin Dashboard
+  - **Admin Notices** (`render_admin_notices()`):
+    - Success messages for all bulk actions (deleted, published, drafted, adapter_changed, uploaded)
+    - Displays count: "N ROMs deleted" (singular/plural handling)
+    - Dismissible green success notices
+  - **Adapter Selector Modal** (`render_adapter_selector_modal()`):
+    - Modal overlay for bulk adapter changes
+    - Dropdown with all available adapters
+    - Copies selected ROM IDs to modal form
+    - Submit/Cancel buttons
+    - Centered modal with dark overlay background
+  - **JavaScript Features**:
+    - Delete confirmation: "Are you sure you want to delete this ROM?"
+    - Bulk action validation: "Please select at least one ROM"
+    - Adapter modal trigger on "Change Adapter" action
+    - Drag-and-drop visual states (.drag-over class)
+    - WordPress Media Library integration
+  - **Admin Actions**:
+    - `admin_post_gamify_bulk_rom_action` - Process all bulk actions
+  - **Methods**:
+    - `add_admin_menu()` - Register submenu page
+    - `screen_options()` - Add "ROMs per page" screen option
+    - `add_contextual_help()` - Register help tabs
+    - `enqueue_scripts()` - Load Media Library + inline JavaScript
+    - `handle_bulk_action()` - Process bulk operations (delete, publish, draft, change_adapter)
+    - `render_page()` - Main admin page output
+    - `render_admin_notices()` - Display success/error messages
+    - `render_drag_drop_uploader()` - Upload interface
+    - `render_adapter_selector_modal()` - Bulk adapter change modal
+  - **List Table Methods** (WP_Gamify_Bridge_ROM_List_Table):
+    - `get_columns()` - Define table columns
+    - `get_sortable_columns()` - Define sortable columns
+    - `get_bulk_actions()` - Define available bulk actions
+    - `column_*()` - Render specific columns (cb, title, thumbnail, adapter, system, file_size, status, date)
+    - `prepare_items()` - Query ROMs and prepare for display
+    - `no_items()` - Message when no ROMs exist
+    - `extra_tablenav()` - Render filters (adapter, system)
+  - **Security**: Nonce verification (`bulk-roms`), capability checks (`manage_options`), sanitization on all inputs
+  - **Styling**: Inline CSS for status indicators, drag-drop area, modal overlay
+  - **Integration**: Works seamlessly with existing ROM CPT and meta boxes
+
 - **WP_Gamify_Bridge_Script_Enqueuer** (`inc/class-script-enqueuer.php`)
   - Handles JavaScript/CSS asset loading
 

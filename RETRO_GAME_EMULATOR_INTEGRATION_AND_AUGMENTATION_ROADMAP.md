@@ -38,7 +38,7 @@ A focused plan for folding the legacy **Retro Game Emulator** plugin into WP Ret
 
 ---
 
-## Phase 3 — Admin Experience & Workflow (In Progress)
+## Phase 3 — Admin Experience & Workflow ✅ (COMPLETE)
 **Objective:** Replace the dated `options.php` page with a modern ROM library UI.
 - ✅ `admin/class-rom-library.php` adds ROM meta boxes, list-table columns, adapter dropdowns, and sanitation hooks.
 - ✅ **Adapter Metadata Tooltips:** Dynamic inline help displays when adapter selected:
@@ -49,7 +49,37 @@ A focused plan for folding the legacy **Retro Game Emulator** plugin into WP Ret
   - Default score multiplier
   - Uses `WP_Gamify_Bridge_Emulator_Manager::get_adapters_metadata()` (Phase 5 enhancement)
   - JavaScript-powered live updates when adapter dropdown changes
-- ⏳ TODO: Dedicated ROM Library admin screen (list table + bulk actions), drag-and-drop uploader, contextual help, and migration warnings surfaced inside wp-admin.
+- ✅ **Dedicated ROM Library Admin Screen** (`admin/class-rom-library-admin.php`):
+  - **WP_List_Table Implementation:** Professional WordPress admin table for ROM management
+  - **Columns:** Thumbnail, Title, Adapter, System, File Size, Status, Date Added
+  - **Sortable:** Title, Adapter, File Size, Date (default sort by date desc)
+  - **Row Actions:** Edit, Delete, View/Preview links
+  - **Bulk Actions:**
+    - Delete selected ROMs (permanent deletion)
+    - Publish selected ROMs (make publicly available)
+    - Set to Draft (hide from public view)
+    - Change Adapter (modal-based adapter selector for multiple ROMs)
+  - **Filtering:** Filter by adapter and system taxonomy
+  - **Pagination:** 20 ROMs per page (configurable via screen options)
+  - **Drag-and-Drop Uploader:**
+    - Visual upload area at top of page
+    - WordPress Media Library integration
+    - Drag-and-drop or click-to-browse
+    - Multiple file upload support
+    - Format and size limit reminders
+  - **Contextual Help Tabs:**
+    - Overview - What the ROM Library does
+    - Uploading ROMs - Supported formats, file size limits
+    - Bulk Actions - Detailed explanation of each action
+    - Migration - Instructions for migrating from legacy plugin
+    - Help sidebar with quick links
+  - **Admin Notices:** Success/error messages for all bulk actions
+  - **Modal UI:** Adapter selector modal for bulk adapter changes
+  - **Delete Confirmation:** JavaScript confirmation for destructive actions
+  - **Responsive Design:** Works on all screen sizes
+  - **Integration:** Submenu under "Gamify Bridge" menu
+
+**Status:** Phase 3 complete. All admin workflow features implemented.
 
 ---
 
