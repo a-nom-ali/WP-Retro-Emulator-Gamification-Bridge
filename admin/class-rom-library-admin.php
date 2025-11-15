@@ -100,7 +100,13 @@ class WP_Gamify_Bridge_ROM_List_Table extends WP_List_Table {
 	 * @return string
 	 */
 	public function column_title( $item ) {
-		$edit_url   = get_edit_post_link( $item['ID'] );
+		$edit_url = get_edit_post_link( $item['ID'] );
+
+		// Fallback: build edit URL manually if get_edit_post_link() returns null/empty.
+		if ( empty( $edit_url ) ) {
+			$edit_url = admin_url( sprintf( 'post.php?post=%d&action=edit', $item['ID'] ) );
+		}
+
 		$delete_url = wp_nonce_url(
 			add_query_arg(
 				array(
@@ -116,10 +122,13 @@ class WP_Gamify_Bridge_ROM_List_Table extends WP_List_Table {
 			'delete' => sprintf( '<a href="%s" class="delete-rom" data-rom-id="%d">%s</a>', esc_url( $delete_url ), $item['ID'], __( 'Delete', 'wp-gamify-bridge' ) ),
 		);
 
-		if ( 'publish' !== $item['post_status'] ) {
-			$actions['view'] = sprintf( '<a href="%s" target="_blank">%s</a>', esc_url( get_permalink( $item['ID'] ) ), __( 'Preview', 'wp-gamify-bridge' ) );
-		} else {
-			$actions['view'] = sprintf( '<a href="%s" target="_blank">%s</a>', esc_url( get_permalink( $item['ID'] ) ), __( 'View', 'wp-gamify-bridge' ) );
+		$permalink = get_permalink( $item['ID'] );
+		if ( $permalink && ! is_wp_error( $permalink ) ) {
+			if ( 'publish' !== $item['post_status'] ) {
+				$actions['view'] = sprintf( '<a href="%s" target="_blank">%s</a>', esc_url( $permalink ), __( 'Preview', 'wp-gamify-bridge' ) );
+			} else {
+				$actions['view'] = sprintf( '<a href="%s" target="_blank">%s</a>', esc_url( $permalink ), __( 'View', 'wp-gamify-bridge' ) );
+			}
 		}
 
 		return sprintf(
@@ -166,6 +175,11 @@ class WP_Gamify_Bridge_ROM_List_Table extends WP_List_Table {
 	public function column_adapter( $item ) {
 		$adapter = get_post_meta( $item['ID'], '_retro_rom_adapter', true );
 
+		// Handle null or empty adapter.
+		if ( empty( $adapter ) ) {
+			return '<span class="description">' . esc_html__( 'Unknown', 'wp-gamify-bridge' ) . '</span>';
+		}
+
 		$adapter_labels = array(
 			'jsnes'       => 'JSNES (NES)',
 			'jsnes_snes'  => 'jSNES (SNES)',
@@ -207,7 +221,8 @@ class WP_Gamify_Bridge_ROM_List_Table extends WP_List_Table {
 	public function column_file_size( $item ) {
 		$file_size = get_post_meta( $item['ID'], '_retro_rom_file_size', true );
 
-		if ( empty( $file_size ) ) {
+		// Ensure file_size is numeric and not null/empty.
+		if ( ! $file_size || ! is_numeric( $file_size ) ) {
 			return '<span class="description">' . esc_html__( 'Unknown', 'wp-gamify-bridge' ) . '</span>';
 		}
 
@@ -241,10 +256,23 @@ class WP_Gamify_Bridge_ROM_List_Table extends WP_List_Table {
 	public function column_date( $item ) {
 		$date = get_the_date( 'Y-m-d H:i:s', $item['ID'] );
 
+		// Handle invalid or missing dates.
+		if ( ! $date || false === $date ) {
+			return '<span class="description">' . esc_html__( 'No date', 'wp-gamify-bridge' ) . '</span>';
+		}
+
+		$formatted_date = get_the_date( '', $item['ID'] );
+		$timestamp      = strtotime( $date );
+
+		// Ensure valid timestamp.
+		if ( false === $timestamp || ! $formatted_date ) {
+			return '<span class="description">' . esc_html__( 'Invalid date', 'wp-gamify-bridge' ) . '</span>';
+		}
+
 		return sprintf(
 			'%s<br><span class="description">%s</span>',
-			esc_html( get_the_date( '', $item['ID'] ) ),
-			esc_html( human_time_diff( strtotime( $date ), current_time( 'timestamp' ) ) . ' ago' )
+			esc_html( $formatted_date ),
+			esc_html( human_time_diff( $timestamp, current_time( 'timestamp' ) ) . ' ago' )
 		);
 	}
 

@@ -17,6 +17,16 @@ if ( ! current_user_can( 'manage_options' ) ) {
 	wp_die( 'Unauthorized access.' );
 }
 
+// Ensure taxonomies are registered before migration runs.
+// The plugin's init hook may not have fired yet when this script is accessed directly.
+if ( class_exists( 'WP_Gamify_Bridge_Post_Types' ) ) {
+	$post_types_instance = WP_Gamify_Bridge_Post_Types::instance();
+	// Force taxonomy registration if not already done.
+	if ( ! taxonomy_exists( 'retro_system' ) ) {
+		do_action( 'init' );
+	}
+}
+
 set_time_limit( 300 );
 ini_set( 'memory_limit', '512M' );
 
