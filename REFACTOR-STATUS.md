@@ -97,6 +97,63 @@ DROP TABLE IF EXISTS wp_gamify_rooms;
 
 ---
 
+## Retro Game Emulator Integration Audit (Phase 1)
+
+### Current Deployment Snapshot
+- Active development happens on a local WP install (`http://campaign-forge.local`, admin/admin). No production exposure yet, so we can migrate aggressively without compatibility shims.
+- `[nes]` shortcode currently lives on a single test page (`/contact-us/`), but we will still provide a migration path in case additional content appears later.
+
+### Legacy Plugin Findings (`/retro-game-emulator`)
+- Version 1.3.1 of the standalone plugin bundles JSNES (`lib/jsnes.min.js`) plus a thin bootstrap (`lib/app.js`) that renders a `<canvas>` and ROM selector without any gamification hooks.
+- Shortcode rendering (`shortcode-template.php`) performs a blocking `scandir()` on every request, outputs inline HTML tables, and lacks nonce/capability controls for ROM access.
+- `wp_head` injection dumps the ROM list as JSON globally, exposing filenames/URLs to any visitor.
+- Options page (`options.php`) is registered with the literal `'administrator'` capability string, bypassing granular caps and offering no sanitation beyond wp_nonce_field; deletes rely on `wp_delete_file()` with unsanitized filenames.
+- Upload handler (`handleOptions()`) adjusts `upload_dir` to `/retro-game-emulator/` but stores raw `.nes` files directly under `wp-content/uploads`, providing no MIME/size enforcement or metadata.
+- Languages directory is empty, no translation coverage. Readme indicates "Tested up to 5.6" and no Gutenberg/block support.
+
+### ROM Storage Status
+- Legacy ROMs currently reside in `/Users/nielowait/Local Sites/campaign-forge/app/public/wp-content/uploads/retro-game-emulator`.
+- Sample set includes a failing experimental ROM (`piggypoo.nes`) plus several working NES titles; no structured metadata accompanies these assets.
+
+### Open Design Inputs (from OPEN_QUESTIONS.md)
+- Additional emulator support should follow ROM availability (NES first, then the most common systems).
+- On-screen controls: auto-show on mobile; desktop gets a toggle plus a gear icon for sensitivity/key remapping.
+- Save-state/cloud sync is "nice to have"—include if low friction, otherwise plan for a follow-up release.
+- ROM uploads manageable by Administrators and Editors, with future CSV/JSON/WP-CLI bulk tooling approved.
+- Default event broadcasts should stay within the originating room, with a per-ROM override for site-wide shout-outs.
+- Temporary rooms may be auto-provisioned when no explicit room is attached.
+
+### Immediate Action Items
+1. **Document Usage & Backup Legacy Files** – Preserve the `/retro-game-emulator` directory state and capture any customizations before we start extracting features.
+2. **Define ROM Data Model** – Draft CPT/meta schema (fields: adapter slug, system, cover art, difficulty, release year, publisher, notes, gamification overrides, save-state support) and map legacy file attributes into that schema.
+3. **Plan Migration Utilities** – Outline WP-CLI + admin flows to import from `/uploads/retro-game-emulator`, attach metadata, and validate filenames (including error reproduction for `piggypoo.nes`).
+4. **Design Touch Control Component** – Spec responsive controls that hook into adapter metadata/state and obey the toggle/gear behavior described above.
+5. **Security Review** – Enumerate the risks (scandir exposure, inline ROM JSON, capability misuse) and ensure all new modules enforce `manage_options`/`edit_others_posts` (or custom caps), sanitized filenames, and signed ROM URLs.
+
+This checklist keeps Phase 1 grounded and unblocks Phase 2 (data model + storage) once the schema and migration plan are approved.
+
+---
+
+## Phase 2 Kickoff — ROM Data Model
+- ✅ Added `retro_rom` custom post type with REST-aware taxonomies (`retro_system`, `retro_difficulty`, `retro_multiplayer_mode`).
+- ✅ Registered post meta for adapter slug, ROM source, checksum, release year, publisher, file size, gamification overrides, control/touch profiles, and save-state toggles.
+- ✅ Introduced `WP_Gamify_Bridge_Rom_Library` admin helper that supplies meta boxes, custom columns, and field sanitization powered by `WP_Gamify_Bridge_Emulator_Manager` adapter data.
+- ✅ Built frontend + API accessors:
+  - `WP_Gamify_Bridge_Rom_Library_Service` exposes formatted ROM metadata, pagination helpers, and resolved download URLs.
+  - `WP_Gamify_Bridge_Rom_Library_Endpoint` registers `GET /gamify/v1/roms` and `GET /gamify/v1/roms/{id}` so the JS layer and external tools can query ROM definitions with filters (system, adapter, difficulty, multiplayer).
+  - `WP_Gamify_Bridge_Script_Enqueuer` now localizes up to 100 ROM entries + REST endpoints into `wpGamifyBridge`, and `js/emulator-hooks.js` loads that library for future pickers.
+- ✅ Delivered `[retro_emulator]` shortcode (with automatic `[nes]` shim) that renders:
+  - Canvas container, ROM picker UI, metadata sidebar, and responsive on-screen touch controls (auto-show on mobile, toggle on desktop).
+  - Integrated JSNES runtime + new `retro-emulator-player.js` orchestrating ROM loading via REST metadata, keyboard/touch controls, and status updates.
+  - Touch controls emit controller input while updating `WPGamifyBridge.activeRom` so gamification hooks know which ROM/session is active.
+- ✅ Extended migration tooling and frontend lifecycle:
+  - `migrate-legacy-roms.php` now auto-classifies SNES (`.smc`, `.sfc`, `.fig`), GBA, and Game Boy/Color ROMs, applying taxonomy metadata (systems, difficulties, multiplayer modes) and adapter slugs automatically.
+  - `retro-emulator-player.js` dispatches lifecycle events (`jsnes:gameLoad`, `jsnes:gameStart`, `jsnes:gameOver`) and invokes `WPGamifyBridge` helpers so adapter mappings emit `game_start`/`game_over` payloads with ROM context. Event payloads now include ROM metadata for server-side adapters.
+  - Added editor-friendly block (`wp-gamify/retro-emulator`) so Gutenberg users can drop the same UI via block inspector controls; block assets pull ROM options from the library service.
+- ⏭️ Next: Build migration/import tooling that populates `retro_rom` posts from `/wp-content/uploads/retro-game-emulator` and auto-detects metadata when possible.
+
+---
+
 ## 📚 Legacy Documentation (For Reference)
 
 ### Original Completed Items
