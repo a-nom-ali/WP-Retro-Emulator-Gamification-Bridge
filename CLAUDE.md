@@ -233,6 +233,36 @@ composer run test
     - Settings section: `wp_gamify_bridge_general`
     - All settings use WordPress Settings API
 
+- **WP_Gamify_Bridge_Rom_Library** (`admin/class-rom-library.php`) 🆕 Enhanced in Phase 3 & 5
+  - **Lines**: 505+ (with adapter metadata tooltips)
+  - **Purpose**: Enhances retro_rom CPT with meta boxes, custom columns, and dynamic adapter help
+  - **Meta Boxes**:
+    - ROM Details: Adapter selection, source, release year, publisher, checksum, file size, notes
+    - Gamification & Controls: Gamification overrides, control layout, touch settings, save-state toggle
+  - **Adapter Metadata Tooltips** 🆕 (Phase 3 + Phase 5 integration):
+    - **Dynamic inline help** when adapter is selected from dropdown
+    - Displays adapter-specific information:
+      - Supported file extensions (e.g., .nes, .gba, .smc, .zip)
+      - Save-state support indicator (✓ Yes / ✗ No with color coding)
+      - Control mappings (D-Pad, buttons, shoulder buttons, etc.)
+      - Setup instructions for users
+      - Default score multiplier
+    - **JavaScript-powered**: Live updates when adapter dropdown changes
+    - **Data source**: `WP_Gamify_Bridge_Emulator_Manager::get_adapters_metadata()`
+    - **Localization**: Adapter metadata loaded via `wp_add_inline_script()`
+    - **Styling**: WordPress admin notice style (light gray background, blue left border)
+  - **Custom List Columns**:
+    - Adapter: Shows adapter display name
+    - Systems: Shows retro_system taxonomy terms
+    - Source: Shows attachment filename or URL path
+    - Last Updated: Shows human time diff
+  - **Meta Keys**:
+    - `_retro_rom_adapter`, `_retro_rom_source`, `_retro_rom_checksum`, `_retro_rom_file_size`
+    - `_retro_rom_release_year`, `_retro_rom_publisher`, `_retro_rom_notes`
+    - `_retro_rom_gamification`, `_retro_rom_control_profile`, `_retro_rom_touch_settings`, `_retro_rom_save_state`
+  - **Security**: Nonce verification (`retro_rom_meta_nonce`) and capability checks on save
+  - **Data Handling**: JSON fields support both string and array values with automatic decoding
+
 - **WP_Gamify_Bridge_Script_Enqueuer** (`inc/class-script-enqueuer.php`)
   - Handles JavaScript/CSS asset loading
 

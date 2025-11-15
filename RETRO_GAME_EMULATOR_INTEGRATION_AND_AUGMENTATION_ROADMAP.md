@@ -29,8 +29,15 @@ A focused plan for folding the legacy **Retro Game Emulator** plugin into WP Ret
 ## Phase 3 — Admin Experience & Workflow (In Progress)
 **Objective:** Replace the dated `options.php` page with a modern ROM library UI.
 - ✅ `admin/class-rom-library.php` adds ROM meta boxes, list-table columns, adapter dropdowns, and sanitation hooks.
+- ✅ **Adapter Metadata Tooltips:** Dynamic inline help displays when adapter selected:
+  - Supported file extensions (e.g., .nes, .gba, .smc)
+  - Save-state support indicator (✓ Yes / ✗ No)
+  - Control mappings (D-Pad, buttons, etc.)
+  - Setup instructions
+  - Default score multiplier
+  - Uses `WP_Gamify_Bridge_Emulator_Manager::get_adapters_metadata()` (Phase 5 enhancement)
+  - JavaScript-powered live updates when adapter dropdown changes
 - ⏳ TODO: Dedicated ROM Library admin screen (list table + bulk actions), drag-and-drop uploader, contextual help, and migration warnings surfaced inside wp-admin.
-- ⏳ TODO: Inline adapter/system metadata tooltips referencing `WP_Gamify_Bridge_Emulator_Manager`.
 
 ---
 

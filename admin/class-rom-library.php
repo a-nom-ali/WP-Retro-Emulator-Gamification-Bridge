@@ -66,6 +66,91 @@ class WP_Gamify_Bridge_Rom_Library {
 		add_filter( 'manage_retro_rom_posts_columns', array( $this, 'register_list_columns' ) );
 		add_action( 'manage_retro_rom_posts_custom_column', array( $this, 'render_list_columns' ), 10, 2 );
 		add_filter( 'manage_edit-retro_rom_sortable_columns', array( $this, 'register_sortable_columns' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
+	}
+
+	/**
+	 * Enqueue admin scripts and styles.
+	 *
+	 * @param string $hook Current admin page hook.
+	 */
+	public function enqueue_admin_scripts( $hook ) {
+		$screen = get_current_screen();
+		if ( ! $screen || 'retro_rom' !== $screen->post_type ) {
+			return;
+		}
+
+		// Localize adapter metadata for JavaScript.
+		$manager = WP_Gamify_Bridge_Emulator_Manager::instance();
+		$metadata = $manager ? $manager->get_adapters_metadata() : array();
+
+		wp_add_inline_script(
+			'jquery',
+			'var wpGamifyAdapterMetadata = ' . wp_json_encode( $metadata ) . ';',
+			'before'
+		);
+
+		// Add inline script for dynamic adapter tooltips.
+		wp_add_inline_script(
+			'jquery',
+			"
+			jQuery(document).ready(function($) {
+				var adapterSelect = $('#retro-rom-adapter');
+				var metadataContainer = $('#adapter-metadata-display');
+
+				function updateAdapterMetadata() {
+					var selectedAdapter = adapterSelect.val();
+					if (!selectedAdapter || !wpGamifyAdapterMetadata[selectedAdapter]) {
+						metadataContainer.html('').hide();
+						return;
+					}
+
+					var meta = wpGamifyAdapterMetadata[selectedAdapter];
+					var html = '<div class=\"adapter-metadata-info\" style=\"background: #f0f0f1; border-left: 4px solid #2271b1; padding: 12px; margin-top: 10px;\">';
+					html += '<h4 style=\"margin: 0 0 10px 0;\">' + meta.display_name + ' Details</h4>';
+
+					// File extensions
+					if (meta.supported_extensions && meta.supported_extensions.length > 0) {
+						html += '<p><strong>Supported File Extensions:</strong> ';
+						html += meta.supported_extensions.map(function(ext) { return '.' + ext; }).join(', ');
+						html += '</p>';
+					}
+
+					// Save-state support
+					html += '<p><strong>Save-State Support:</strong> ';
+					html += meta.supports_save_state ? '<span style=\"color: #46b450;\">✓ Yes</span>' : '<span style=\"color: #999;\">✗ No</span>';
+					html += '</p>';
+
+					// Control mappings
+					if (meta.control_mappings && Object.keys(meta.control_mappings).length > 0) {
+						html += '<p><strong>Control Mappings:</strong><br>';
+						var controls = [];
+						for (var key in meta.control_mappings) {
+							controls.push('<code>' + key + '</code>: ' + meta.control_mappings[key]);
+						}
+						html += controls.join(', ');
+						html += '</p>';
+					}
+
+					// Setup instructions
+					if (meta.setup_instructions) {
+						html += '<p><strong>Setup Instructions:</strong><br>' + meta.setup_instructions + '</p>';
+					}
+
+					// Score multiplier
+					if (meta.score_multiplier) {
+						html += '<p><strong>Default Score Multiplier:</strong> ' + meta.score_multiplier + 'x</p>';
+					}
+
+					html += '</div>';
+					metadataContainer.html(html).show();
+				}
+
+				adapterSelect.on('change', updateAdapterMetadata);
+				updateAdapterMetadata(); // Run on load
+			});
+			"
+		);
 	}
 
 	/**
@@ -122,6 +207,7 @@ class WP_Gamify_Bridge_Rom_Library {
 						<?php endforeach; ?>
 					</select>
 					<p class="description"><?php esc_html_e( 'Determines which emulator adapter boots this ROM and how events are transformed.', 'wp-gamify-bridge' ); ?></p>
+					<div id="adapter-metadata-display"></div>
 				</td>
 			</tr>
 			<tr>
