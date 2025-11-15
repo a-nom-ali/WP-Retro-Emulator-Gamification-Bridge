@@ -56,3 +56,4 @@ phpunit.xml
 *.backup
 *.tmp
 *~
+retro-game-emulator/
