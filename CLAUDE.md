@@ -233,12 +233,46 @@ composer run test
     - Settings section: `wp_gamify_bridge_general`
     - All settings use WordPress Settings API
 
-- **WP_Gamify_Bridge_Rom_Library** (`admin/class-rom-library.php`) 🆕 Enhanced in Phase 3 & 5
-  - **Lines**: 505+ (with adapter metadata tooltips)
-  - **Purpose**: Enhances retro_rom CPT with meta boxes, custom columns, and dynamic adapter help
+- **WP_Gamify_Bridge_Rom_Library** (`admin/class-rom-library.php`) 🆕 Enhanced in Phase 2, 3 & 5
+  - **Lines**: 859 (with upload infrastructure and adapter tooltips)
+  - **Purpose**: Complete ROM management with uploads, metadata tooltips, and comprehensive validation
   - **Meta Boxes**:
+    - **ROM Upload** 🆕 (Phase 2): WordPress Media Library integration
     - ROM Details: Adapter selection, source, release year, publisher, checksum, file size, notes
     - Gamification & Controls: Gamification overrides, control layout, touch settings, save-state toggle
+  - **ROM Upload Infrastructure** 🆕 (Phase 2):
+    - **WordPress Media Library Integration**: Uses native wp.media frame for file selection
+    - **Upload Meta Box** (`render_upload_metabox()`):
+      - Current ROM file display (name, size, checksum, download link)
+      - Upload/Replace button with instant feedback
+      - Remove button with confirmation dialog
+      - Supported file formats displayed based on selected adapter
+      - Hidden field stores attachment ID
+      - JavaScript handles upload/remove actions with AJAX-style updates
+    - **Comprehensive Validation** (`validate_rom_file()`):
+      - **File Extension Check**: 32 allowed extensions (nes, smc, gba, z64, iso, zip, etc.)
+      - **MIME Type Validation**: 8 allowed MIME types (application/octet-stream, application/zip, etc.)
+      - **File Size Enforcement**: 10MB default limit, filterable via `wp_gamify_bridge_max_rom_size`
+      - **WP_Error Handling**: User-friendly error messages for all validation failures
+    - **Auto-metadata Extraction** (`extract_rom_metadata()`):
+      - MD5 checksum calculation via `md5_file()`
+      - File size detection via `filesize()`
+      - Automatic storage in post meta on successful upload
+    - **Upload Handler** (`save_rom_meta()` enhancement):
+      - Validates attachment exists and is accessible
+      - Runs validation checks before saving
+      - Auto-updates checksum and file size meta
+      - Supports manual override of metadata fields
+      - Admin notices for validation errors via `add_settings_error()`
+    - **Helper Methods**:
+      - `get_adapter_metadata($slug)` - Fetch adapter metadata by slug
+      - `get_allowed_rom_extensions()` - Returns 32 allowed extensions (filterable)
+      - `get_allowed_mime_types()` - Returns 8 allowed MIME types (filterable)
+    - **Security**:
+      - Nonce verification before file processing
+      - Capability checks (`edit_post`)
+      - File existence verification
+      - All limits exposed via WordPress filters for customization
   - **Adapter Metadata Tooltips** 🆕 (Phase 3 + Phase 5 integration):
     - **Dynamic inline help** when adapter is selected from dropdown
     - Displays adapter-specific information:
