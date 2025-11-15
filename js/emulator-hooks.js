@@ -245,12 +245,14 @@
             const payload = {
                 event: eventType,
                 player: this.config.userName,
-                room_id: this.config.roomId,
                 score: eventData.score || 0,
                 data: eventData,
                 _timestamp: Date.now(),
                 _emulatorType: this.emulatorType
             };
+
+            // Note: room_id is optional and not included by default
+            // It will be added by room.js when user is in a valid room
 
             this.stats.eventsSent++;
 
@@ -279,70 +281,93 @@
             options = options || {};
 
             return new Promise(function(resolve, reject) {
-                $.ajax({
-                    url: self.config.apiUrl,
-                    type: 'POST',
-                    data: JSON.stringify(payload),
-                    contentType: 'application/json',
-                    timeout: options.timeout || 10000,
-                    beforeSend: function(xhr) {
-                        xhr.setRequestHeader('X-WP-Nonce', self.config.nonce);
+                // Use fetch instead of jQuery AJAX for better compatibility
+                const controller = new AbortController();
+                const timeoutId = setTimeout(function() {
+                    controller.abort();
+                }, options.timeout || 10000);
+
+                fetch(self.config.apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': self.config.nonce
                     },
-                    success: function(response) {
-                        self.stats.eventsSuccess++;
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                })
+                .then(function(response) {
+                    clearTimeout(timeoutId);
 
-                        self.log('success', 'Event sent successfully: ' + payload.event, response);
-
-                        // Show notification if reward given
-                        if (response.reward && !options.silent) {
-                            self.showNotification(response.reward, 'success');
-                        }
-
-                        // Update rate limit info
-                        if (response.rate_limit) {
-                            self.updateRateLimitStatus(response.rate_limit);
-                        }
-
-                        resolve(response);
-                    },
-                    error: function(xhr, status, error) {
-                        self.log('error', 'Event send failed: ' + payload.event, {
-                            status: xhr.status,
-                            error: error,
-                            retry: retryCount
+                    if (!response.ok) {
+                        return response.json().then(function(data) {
+                            throw { status: response.status, data: data };
+                        }).catch(function() {
+                            throw { status: response.status, data: null };
                         });
+                    }
 
-                        // Handle rate limiting
-                        if (xhr.status === 429) {
-                            self.handleRateLimitExceeded(xhr);
-                            reject(new Error('Rate limit exceeded'));
-                            return;
+                    return response.json();
+                })
+                .then(function(response) {
+                    self.stats.eventsSuccess++;
+
+                    self.log('success', 'Event sent successfully: ' + payload.event, response);
+
+                    // Show notification if reward given
+                    if (response.reward && !options.silent) {
+                        self.showNotification(response.reward, 'success');
+                    }
+
+                    // Update rate limit info
+                    if (response.rate_limit) {
+                        self.updateRateLimitStatus(response.rate_limit);
+                    }
+
+                    resolve(response);
+                })
+                .catch(function(error) {
+                    clearTimeout(timeoutId);
+
+                    const status = error.status || 0;
+                    const errorMsg = error.data ? JSON.stringify(error.data) : error.message || 'Network error';
+
+                    self.log('error', 'Event send failed: ' + payload.event, {
+                        status: status,
+                        error: errorMsg,
+                        retry: retryCount
+                    });
+
+                    // Handle rate limiting
+                    if (status === 429) {
+                        self.handleRateLimitExceeded({ status: status, responseJSON: error.data });
+                        reject(new Error('Rate limit exceeded'));
+                        return;
+                    }
+
+                    // Retry logic
+                    if (retryCount < self.retryConfig.maxRetries && self.shouldRetry(status)) {
+                        self.stats.eventsRetried++;
+
+                        const delay = self.retryConfig.retryDelay * Math.pow(self.retryConfig.backoffMultiplier, retryCount);
+
+                        self.log('warning', 'Retrying event in ' + delay + 'ms (attempt ' + (retryCount + 1) + ')');
+
+                        setTimeout(function() {
+                            self.sendEvent(payload, retryCount + 1, options)
+                                .then(resolve)
+                                .catch(reject);
+                        }, delay);
+                    } else {
+                        // Max retries exceeded - queue for later
+                        self.stats.eventsFailed++;
+
+                        if (!options.skipQueue) {
+                            self.queueEvent(payload);
+                            self.log('warning', 'Event queued for retry: ' + payload.event);
                         }
 
-                        // Retry logic
-                        if (retryCount < self.retryConfig.maxRetries && self.shouldRetry(xhr.status)) {
-                            self.stats.eventsRetried++;
-
-                            const delay = self.retryConfig.retryDelay * Math.pow(self.retryConfig.backoffMultiplier, retryCount);
-
-                            self.log('warning', 'Retrying event in ' + delay + 'ms (attempt ' + (retryCount + 1) + ')');
-
-                            setTimeout(function() {
-                                self.sendEvent(payload, retryCount + 1, options)
-                                    .then(resolve)
-                                    .catch(reject);
-                            }, delay);
-                        } else {
-                            // Max retries exceeded - queue for later
-                            self.stats.eventsFailed++;
-
-                            if (!options.skipQueue) {
-                                self.queueEvent(payload);
-                                self.log('warning', 'Event queued for retry: ' + payload.event);
-                            }
-
-                            reject(new Error('Event send failed after ' + retryCount + ' retries'));
-                        }
+                        reject(new Error('Event send failed after ' + retryCount + ' retries'));
                     }
                 });
             });

@@ -3,7 +3,7 @@
  * Plugin Name: WP Retro Emulator Gamification Bridge
  * Plugin URI: https://github.com/nielowait/WP-Retro-Emulator-Gamification-Bridge
  * Description: Bridges JavaScript-based retro game emulators with WordPress gamification systems (GamiPress, MyCred) supporting real-time XP, achievements, and room-based events.
- * Version: 0.1.0
+ * Version: 0.1.2
  * Author: Nielo Wait
  * Author URI: https://github.com/nielowait
  * License: GPL v2 or later
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'WP_GAMIFY_BRIDGE_VERSION', '0.1.0' );
+define( 'WP_GAMIFY_BRIDGE_VERSION', '0.1.2' );
 define( 'WP_GAMIFY_BRIDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WP_GAMIFY_BRIDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'WP_GAMIFY_BRIDGE_PLUGIN_FILE', __FILE__ );
