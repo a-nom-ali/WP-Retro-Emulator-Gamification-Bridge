@@ -51,12 +51,14 @@
         this.bindUI();
         this.initTouchControls();
 
+        // Handle Retro Emulator block (with ROM selector)
         if (this.romSelect && this.element.dataset.defaultRom) {
             this.romSelect.value = this.element.dataset.defaultRom;
         }
 
-        if (this.romSelect && this.romSelect.value) {
-            this.loadSelectedRom();
+        // Load ROM if selector has value OR if there's a default ROM (ROM Player block)
+        if ((this.romSelect && this.romSelect.value) || (!this.romSelect && this.element.dataset.defaultRom)) {
+            this.loadSelectedRomWhenReady();
         }
     };
 
@@ -138,11 +140,48 @@
         return (this.audioWrite - this.audioRead) & this.sampleMask;
     };
 
-    RetroEmulator.prototype.loadSelectedRom = function() {
-        if (!this.romSelect) {
+    RetroEmulator.prototype.loadSelectedRomWhenReady = function(attempt) {
+        attempt = attempt || 0;
+        var self = this;
+        var maxAttempts = 10;
+
+        // Get ROM ID from selector (Retro Emulator block) or data attribute (ROM Player block)
+        var romId = 0;
+        if (this.romSelect && this.romSelect.value) {
+            romId = parseInt(this.romSelect.value, 10);
+        } else if (this.element.dataset.defaultRom) {
+            romId = parseInt(this.element.dataset.defaultRom, 10);
+        }
+
+        if (!romId) {
             return;
         }
-        var romId = parseInt(this.romSelect.value, 10);
+
+        // Check if WPGamifyBridge is ready and has ROM data
+        if (!window.WPGamifyBridge || !window.WPGamifyBridge.availableRoms || window.WPGamifyBridge.availableRoms.length === 0) {
+            if (attempt < maxAttempts) {
+                setTimeout(function() {
+                    self.loadSelectedRomWhenReady(attempt + 1);
+                }, 100);
+            } else {
+                this.updateStatus('ROM data not available');
+            }
+            return;
+        }
+
+        // Data is ready, load the ROM
+        this.loadSelectedRom();
+    };
+
+    RetroEmulator.prototype.loadSelectedRom = function() {
+        // Get ROM ID from selector (Retro Emulator block) or data attribute (ROM Player block)
+        var romId = 0;
+        if (this.romSelect && this.romSelect.value) {
+            romId = parseInt(this.romSelect.value, 10);
+        } else if (this.element.dataset.defaultRom) {
+            romId = parseInt(this.element.dataset.defaultRom, 10);
+        }
+
         if (!window.WPGamifyBridge || !romId) {
             return;
         }
