@@ -116,9 +116,9 @@ class WP_Gamify_Bridge_Blocks {
      * @return string Modified content.
      */
     public function render_blocks_as_shortcodes( $content ) {
-        // Convert Retro Emulator blocks to shortcodes.
+        // Convert Retro Emulator blocks to shortcodes (both self-closing and full format).
         $content = preg_replace_callback(
-            '/<!-- wp:wp-gamify\/retro-emulator\s+(\{[^}]+\})\s+-->\s*<!-- \/wp:wp-gamify\/retro-emulator -->/s',
+            '/<!-- wp:wp-gamify\/retro-emulator\s+(\{[^}]+\})\s+(?:\/-->|-->\s*<!-- \/wp:wp-gamify\/retro-emulator -->)/s',
             function( $matches ) {
                 $attrs = json_decode( $matches[1], true );
                 $shortcode_atts = array();
@@ -135,9 +135,9 @@ class WP_Gamify_Bridge_Blocks {
             $content
         );
 
-        // Convert ROM Player blocks to shortcodes.
+        // Convert ROM Player blocks to shortcodes (both self-closing and full format).
         $content = preg_replace_callback(
-            '/<!-- wp:wp-gamify\/rom-player\s+(\{[^}]+\})\s+-->\s*<!-- \/wp:wp-gamify\/rom-player -->/s',
+            '/<!-- wp:wp-gamify\/rom-player\s+(\{[^}]+\})\s+(?:\/-->|-->\s*<!-- \/wp:wp-gamify\/rom-player -->)/s',
             function( $matches ) {
                 $attrs = json_decode( $matches[1], true );
                 $shortcode_atts = array();
