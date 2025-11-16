@@ -398,16 +398,54 @@ class WP_Gamify_Bridge_Post_Types {
 		);
 
 		foreach ( $meta_fields as $meta_key => $schema ) {
+			$field_type = isset( $schema['type'] ) ? $schema['type'] : 'string';
+
+			// Set type-appropriate default if not explicitly provided.
+			if ( ! isset( $schema['default'] ) ) {
+				switch ( $field_type ) {
+					case 'string':
+						$default_value = '';
+						break;
+					case 'integer':
+						$default_value = 0;
+						break;
+					case 'boolean':
+						$default_value = false;
+						break;
+					case 'array':
+						$default_value = array();
+						break;
+					default:
+						$default_value = '';
+				}
+			} else {
+				$default_value = $schema['default'];
+			}
+
+			// Configure show_in_rest with proper schema for array types.
+			if ( 'array' === $field_type ) {
+				$show_in_rest = array(
+					'schema' => array(
+						'type'  => 'array',
+						'items' => array(
+							'type' => 'object',
+						),
+					),
+				);
+			} else {
+				$show_in_rest = true;
+			}
+
 			register_post_meta(
 				'retro_rom',
 				$meta_key,
 				array(
 					'single'            => true,
-					'type'              => isset( $schema['type'] ) ? $schema['type'] : 'string',
+					'type'              => $field_type,
 					'description'       => isset( $schema['description'] ) ? $schema['description'] : '',
-					'default'           => isset( $schema['default'] ) ? $schema['default'] : null,
+					'default'           => $default_value,
 					'sanitize_callback' => isset( $schema['sanitize_callback'] ) ? $schema['sanitize_callback'] : null,
-					'show_in_rest'      => true,
+					'show_in_rest'      => $show_in_rest,
 					'auth_callback'     => function() {
 						return current_user_can( 'edit_posts' );
 					},
