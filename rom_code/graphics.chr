@@ -1,0 +1,14 @@
+; Background Tiles
+; Tile $00: Floor (light brown)
+C3 E7 E7 C3 C3 E7 E7 C3 00 00 00 00 00 00 00 00
+; Tile $01: Wall (dark brown bricks)
+FF C3 C3 FF C3 C3 FF C3 00 00 00 00 00 00 00 00
+; (Fill with empty tiles up to the sprite area)
+; ...
+; Sprite Tiles (starting at Tile index 256, or $1000 in CHR ROM)
+; Tile $00 (Sprite 0): Piggy
+00 3C 7E FF C3 C3 42 3C 00 00 00 00 00 00 00 00
+; Tile $01 (Sprite 1): Hay Bale
+BD FF 42 BD BD 42 FF BD 00 00 00 00 00 00 00 00
+; Tile $02 (Sprite 2): Poo
+00 3C 7E 7E 66 66 3C 00 00 00 00 00 00 00 00 00
