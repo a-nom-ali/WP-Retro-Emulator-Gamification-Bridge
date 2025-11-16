@@ -413,7 +413,7 @@ class WP_Gamify_Bridge_Dashboard {
 						<?php esc_html_e( 'By GamiPress XP', 'wp-gamify-bridge' ); ?>
 					</a>
 				<?php endif; ?>
-				<?php if ( defined( 'MYCRED_VERSION' ) ) : ?>
+				<?php if ( defined( 'myCRED_VERSION' ) ) : ?>
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=gamify-bridge-leaderboard&type=mycred' ) ); ?>" class="button <?php echo $leaderboard_type === 'mycred' ? 'button-primary' : ''; ?>">
 						<?php esc_html_e( 'By MyCred Points', 'wp-gamify-bridge' ); ?>
 					</a>
@@ -531,7 +531,7 @@ class WP_Gamify_Bridge_Dashboard {
 						</tr>
 						<tr>
 							<td><strong><?php esc_html_e( 'MyCred Active', 'wp-gamify-bridge' ); ?></strong></td>
-							<td><?php echo defined( 'MYCRED_VERSION' ) ? '<span style="color: green;">✓ ' . esc_html__( 'Yes', 'wp-gamify-bridge' ) . '</span>' : '<span style="color: red;">✗ ' . esc_html__( 'No', 'wp-gamify-bridge' ) . '</span>'; ?></td>
+							<td><?php echo defined( 'myCRED_VERSION' ) ? '<span style="color: green;">✓ ' . esc_html__( 'Yes', 'wp-gamify-bridge' ) . '</span>' : '<span style="color: red;">✗ ' . esc_html__( 'No', 'wp-gamify-bridge' ) . '</span>'; ?></td>
 						</tr>
 					</tbody>
 				</table>

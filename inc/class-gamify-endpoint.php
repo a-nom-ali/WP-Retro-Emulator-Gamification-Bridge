@@ -347,7 +347,7 @@ class WP_Gamify_Bridge_Endpoint {
 		}
 
 		// Trigger MyCred if available.
-		if ( defined( 'MYCRED_VERSION' ) ) {
+		if ( defined( 'myCRED_VERSION' ) ) {
 			do_action( 'wp_gamify_bridge_mycred_event', $event_type, $user_id, $score, $data );
 			if ( ! empty( $reward ) ) {
 				$reward .= ', ';
@@ -379,7 +379,7 @@ class WP_Gamify_Bridge_Endpoint {
 			),
 			'integrations' => array(
 				'gamipress' => class_exists( 'GamiPress' ),
-				'mycred'    => defined( 'MYCRED_VERSION' ),
+				'mycred'    => defined( 'myCRED_VERSION' ),
 			),
 			'features'    => array(
 				'rate_limiting' => $this->rate_limiter->is_enabled(),

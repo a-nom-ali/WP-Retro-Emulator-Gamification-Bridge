@@ -150,7 +150,7 @@ class WP_Gamify_Bridge {
 			WP_Gamify_Bridge_GamiPress::instance();
 		}
 
-		if ( defined( 'MYCRED_VERSION' ) ) {
+		if ( defined( 'myCRED_VERSION' ) ) {
 			WP_Gamify_Bridge_MyCred::instance();
 		}
 
