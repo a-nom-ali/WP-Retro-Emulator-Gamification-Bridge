@@ -1,0 +1,28 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 2,
+	"name": "wp-gamify/retro-emulator",
+	"version": "0.1.2",
+	"title": "Retro Emulator",
+	"category": "widgets",
+	"icon": "games",
+	"description": "Display retro game emulator with ROM selector dropdown",
+	"supports": {
+		"align": true,
+		"html": false
+	},
+	"textdomain": "wp-gamify-bridge",
+	"attributes": {
+		"rom": {
+			"type": "string",
+			"default": ""
+		},
+		"touchToggle": {
+			"type": "boolean",
+			"default": true
+		},
+		"className": {
+			"type": "string"
+		}
+	}
+}
