@@ -57,6 +57,7 @@ class WP_Gamify_Bridge {
 	private function __construct() {
 		$this->includes();
 		$this->init_hooks();
+		$this->register_early_components();
 	}
 
 	/**
@@ -92,6 +93,14 @@ class WP_Gamify_Bridge {
 	}
 
 	/**
+	 * Register components that need to hook early (before init).
+	 */
+	private function register_early_components() {
+		// Register custom post types - must be instantiated early so its init hook fires.
+		WP_Gamify_Bridge_Post_Types::instance();
+	}
+
+	/**
 	 * Initialize WordPress hooks.
 	 */
 	private function init_hooks() {
@@ -105,9 +114,6 @@ class WP_Gamify_Bridge {
 	 * Initialize plugin components.
 	 */
 	public function init() {
-		// Register custom post types.
-		WP_Gamify_Bridge_Post_Types::instance();
-
 		// Initialize database.
 		WP_Gamify_Bridge_Database::instance();
 
