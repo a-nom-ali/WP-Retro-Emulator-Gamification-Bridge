@@ -40,6 +40,7 @@ class WP_Gamify_Bridge_Emulator_Shortcode {
 	private function __construct() {
 		add_shortcode( 'retro_emulator', array( $this, 'render_shortcode' ) );
 		add_shortcode( 'nes', array( $this, 'render_legacy_shortcode' ) );
+		add_shortcode( 'rom_player', array( $this, 'render_rom_player_shortcode' ) );
 	}
 
 	/**
@@ -94,6 +95,61 @@ class WP_Gamify_Bridge_Emulator_Shortcode {
 	public function render_legacy_shortcode( $atts ) {
 		$atts['legacy_notice'] = true;
 		return $this->render_shortcode( $atts );
+	}
+
+	/**
+	 * Render the ROM Player shortcode (single ROM without dropdown).
+	 *
+	 * @param array $atts Shortcode attributes.
+	 * @return string
+	 */
+	public function render_rom_player_shortcode( $atts ) {
+		$atts = shortcode_atts(
+			array(
+				'rom'          => '',
+				'touch_toggle' => 'true',
+				'show_meta'    => 'true',
+				'class'        => '',
+			),
+			$atts,
+			'rom_player'
+		);
+
+		$rom_id      = sanitize_text_field( $atts['rom'] );
+		$show_toggle = wp_validate_boolean( $atts['touch_toggle'] );
+		$show_meta   = wp_validate_boolean( $atts['show_meta'] );
+		$extra_class = sanitize_html_class( $atts['class'] );
+
+		if ( empty( $rom_id ) ) {
+			return '<div class="wp-gamify-rom-player__empty">' . esc_html__( 'No ROM specified. Please provide a ROM slug or ID.', 'wp-gamify-bridge' ) . '</div>';
+		}
+
+		// Get the ROM by ID or slug.
+		$rom = null;
+		if ( is_numeric( $rom_id ) ) {
+			$rom_post = get_post( (int) $rom_id );
+			if ( $rom_post && 'retro_rom' === $rom_post->post_type ) {
+				$rom = WP_Gamify_Bridge_Rom_Library_Service::get_rom_metadata( $rom_post->ID );
+			}
+		} else {
+			// Try to find by slug.
+			$roms = WP_Gamify_Bridge_Rom_Library_Service::get_list( array( 'name' => $rom_id ) );
+			if ( ! empty( $roms ) ) {
+				$rom = $roms[0];
+			}
+		}
+
+		if ( ! $rom ) {
+			return '<div class="wp-gamify-rom-player__empty">' . esc_html__( 'ROM not found.', 'wp-gamify-bridge' ) . '</div>';
+		}
+
+		$wrapper_id  = 'wp-gamify-rom-player-' . wp_rand( 1000, 999999 );
+		$auto_touch  = 'auto';
+		$active_rom  = $rom;
+
+		ob_start();
+		include WP_GAMIFY_BRIDGE_PLUGIN_DIR . 'templates/shortcodes/rom-player.php';
+		return ob_get_clean();
 	}
 
 	/**
