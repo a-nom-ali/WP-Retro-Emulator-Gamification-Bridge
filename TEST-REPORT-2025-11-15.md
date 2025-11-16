@@ -19,10 +19,10 @@
 - Tests Passed: 2
 - Tests Failed: 0
 - Tests Skipped: 22
-- Critical Issues: 3
+- Critical Issues: ~~3~~ → 2 (1 resolved on Nov 16, 2025)
 - Minor Issues: 0
 
-**Recommendation**: ⬜ Fix critical issues first
+**Recommendation**: ⬜ Fix remaining critical issues (#1: PHP 8.1 deprecation, #2: Taxonomy assignment)
 
 **Testing Method**: Automated end-to-end testing using Playwright MCP tools with manual verification.
 
@@ -127,14 +127,21 @@
 - **Recommendation**: Fix migration script to properly assign `retro_system` taxonomy terms OR fix ROM Library admin to display existing terms
 - **File to Check**: `admin/class-rom-library-admin.php` column rendering, `migrate-legacy-roms.php` taxonomy assignment
 
-**CRITICAL ISSUE #3: Edit Links Empty**
-- **Severity**: Critical
-- **Description**: Row action "Edit" links have empty `href=""` attributes
+**~~CRITICAL ISSUE #3: Edit Links Empty~~** ✅ **RESOLVED**
+- **Severity**: Critical → **FIXED**
+- **Description**: Row action "Edit" links had empty `href=""` attributes, returning "Invalid post type" error (HTTP 500)
 - **Expected**: Should link to `post.php?post={ROM_ID}&action=edit`
-- **Actual**: Links to empty string
-- **Impact**: Cannot edit ROMs from list table (core functionality broken)
-- **Recommendation**: Fix `column_title()` method in `WP_Gamify_Bridge_ROM_List_Table` class
-- **File to Check**: `admin/class-rom-library-admin.php:column_title()`
+- **Actual**: Links returned "Invalid post type" error
+- **Root Cause**: Hook timing bug - `WP_Gamify_Bridge_Post_Types` was instantiated during `init` action, then tried to hook to `init` for `register_post_types()`. Since `init` had already fired, the post type was never registered.
+- **Impact**: ROM edit screens completely non-functional
+- **Resolution**:
+  - **Commit**: 070dd61 "🐛 Fix critical hook timing bug preventing post type registration"
+  - **Fix**: Moved `WP_Gamify_Bridge_Post_Types::instance()` to new `register_early_components()` method called in constructor, before WordPress hooks fire
+  - **Files Changed**: `wp-gamify-bridge.php`
+  - **Verification**: ✅ Post type now registers successfully, edit screens load with all meta boxes
+  - **Screenshot**: `.playwright-mcp/rom-library-FIXED-verified.png`
+- **Status**: ✅ **FULLY RESOLVED** (November 16, 2025)
+- **Test Status**: Test 10 (Edit ROM Screen) now ready for execution
 
 ---
 
