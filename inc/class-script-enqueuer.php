@@ -127,7 +127,7 @@ class WP_Gamify_Bridge_Script_Enqueuer {
 	}
 
 	/**
-	 * Determine if current page contains the emulator shortcode.
+	 * Determine if current page contains the emulator shortcode or block.
 	 *
 	 * @return bool
 	 */
@@ -138,6 +138,16 @@ class WP_Gamify_Bridge_Script_Enqueuer {
 			return false;
 		}
 
-		return has_shortcode( $post->post_content, 'retro_emulator' ) || has_shortcode( $post->post_content, 'nes' );
+		// Check for shortcodes.
+		if ( has_shortcode( $post->post_content, 'retro_emulator' ) || has_shortcode( $post->post_content, 'nes' ) ) {
+			return true;
+		}
+
+		// Check for blocks.
+		if ( has_block( 'wp-gamify/retro-emulator', $post ) || has_block( 'wp-gamify/rom-player', $post ) ) {
+			return true;
+		}
+
+		return false;
 	}
 }
